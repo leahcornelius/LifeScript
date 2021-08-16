@@ -1,7 +1,6 @@
 from rply.parsergenerator import ParserGenerator
-
-
-global_scope = {}  # A Dict of all the variables in the global scope
+from memory import *
+from copy import deepcopy
 
 
 class Expression():
@@ -28,12 +27,23 @@ class Float():
         return float(self.value)
 
 
+class PrivateVar():
+    def __init__(self, name, value, type=None):
+        self.name = name
+        self.value = Null() if (value is None) else value
+        if (type is None):
+            self.type = type(value).__name__
+
+    def eval(self):
+        pass
+
+
 class String():
     def __init__(self, value):
         self.value = value
 
     def eval(self):
-        return self.value
+        return self.value.replace('"', '')
 
 
 class Bool():
@@ -89,6 +99,11 @@ class LeftShift(BinaryOp):
         return self.left.eval() >> self.right.eval()
 
 
+class Divide(BinaryOp):
+    def eval(self):
+        return self.left.eval() / self.right.eval()
+
+
 class Sum(BinaryOp):
     def eval(self):
         return self.left.eval() + self.right.eval()
@@ -100,11 +115,14 @@ class Sub(BinaryOp):
 
 
 class Print():
-    def __init__(self, value):
+    def __init__(self, value, print_null=False):
         self.value = value
+        self.print_null = print_null
 
     def eval(self):
-        print(self.value.eval())
+        val = self.value.eval()
+        if (val is not None and type(val) is not Null) or self.print_null:
+            print(val)
 
 
 class Assign():
@@ -141,6 +159,58 @@ class Block():
             exp.eval()
 
 
+class Parameter():
+    def __init__(self, name, type, default=None):
+        self.name = name
+        self.type = type
+        self.default = default
+
+    def eval(self):
+        if self.default is not None:
+            return self.default
+        else:
+            return Null()
+
+
+class Function():
+    def __init__(self, name, args, body):
+        self.name = name
+        self.args = args  # A List of Parameter()s
+        self.body = body
+
+    def eval(self, argsList):  # Args list is a list of Args
+        prev_values = {}
+        for parameter in self.args.args:
+            if (parameter.name in global_scope):
+                prev_values[parameter.name] = global_scope[parameter.name]
+            found = False
+            for arg in argsList.args:
+                if arg.name == parameter.name:
+                    if arg.value.eval is not None:
+                        global_scope[arg.name] = arg.value.eval()
+                    else:
+                        global_scope[arg.name] = arg.value
+                    found = True
+                    break
+            if not found:  # If the argument is not in the list, we assume that it is the default value
+                default = parameter.eval()
+                if default.eval() is not None:
+                    global_scope[parameter.name] = default.eval()
+                elif default is not None:
+                    global_scope[parameter.name] = default
+                else:
+                    global_scope[parameter.name] = Null()
+        self.body.eval()
+        for arg in prev_values:
+            global_scope[arg] = prev_values[arg]
+        for arg in self.args.args:
+            if arg.name in global_scope:
+                del global_scope[arg.name]
+
+    def get_name(self):
+        return self.name
+
+
 class AssignFunction():
     def __init__(self, name, args, body):
         self.name = name
@@ -148,7 +218,47 @@ class AssignFunction():
         self.body = body
 
     def eval(self):
-        global_scope[self.name] = self
+        global_scope[self.name] = Function(
+            self.name, self.args, self.body)
+
+
+class Comment():
+    def __init__(self, value):
+        self.value = value
+
+    def eval(self):
+        pass
+
+
+class ArgList():
+    def __init__(self, args):
+        self.args = args
+
+    def eval(self):
+        raise Exception("ArgList: Called eval")
+
+
+class Import():
+    def __init__(self, path, atlas=None):
+        self.path = path
+        self.atlas = atlas
+
+    def eval(self):
+        if self.atlas is None:
+            self.atlas = self.path
+
+        if "std/" not in self.path:
+            raise Exception("Import: Not Implemented")
+
+        # import from the standard library
+        if self.path == "std/Math":
+            # import the math library
+            from std import Math
+            math = Math()
+            imports = math.exports()
+            for key, value in imports.items():
+                # form a function
+                global_scope[key] = Function(key, value.input, value.code)
 
 
 class CallFunction():
@@ -157,26 +267,20 @@ class CallFunction():
         self.args = args
 
     def eval(self):
-        if self.name in global_scope:
-            func = global_scope[self.name]
-            if func.body is None:
-                raise Exception("CallFunction: No body")
-            else:
-                func.body.eval()  # TODO: args
+        if self.name not in global_scope:
+            raise Exception("CallFunction: Function undefined")
 
-
-class ParameterDeclaration():
-    def __init__(self, name, type, parent):
-        self.name = name
-        self.type = type
-        self.parent = parent
-
-    def eval(self):
-        global_scope["ParameterStack"][self.parent + "." + self.name] = self
+        func = global_scope[self.name]
+        if type(func) is not Function:
+            raise Exception("CallFunction: Cannot call " + type(func).__name__)
+        if func.body is None:
+            raise Exception("CallFunction: No body")
+        else:
+            func.eval(self.args)
 
 
 class Arg():
-    def __init__(self, name, value,):
+    def __init__(self, name, value):
         self.name = name
         self.value = value
 
@@ -185,9 +289,6 @@ class Arg():
             return global_scope["ParameterStack"][parent + "." + self.name].type
         else:
             return type(self.value).toString()
-
-    def eval(self):
-        global_scope[self.name] = self.value.eval()
 
 
 class Type():
@@ -266,3 +367,131 @@ class ConditionResolver():
         elif self.type == 'IS':
             if self.expresion is self.other_expresion.eval():
                 return True
+
+
+class TypeOf():
+    def __init__(self, expresion):
+        self.expresion = expresion
+
+    def eval(self):
+        return type(self.expresion.eval()).__name__
+
+
+class Pointer():
+    def __init__(self, index, path):
+        self.index = index
+        self.path = path
+
+
+class ClassPointer(Pointer):
+    def __init__(self, index):
+        Pointer.__init__(self, index, "classinstances")
+
+    def eval(self):
+        return global_scope[self.path][self.index]
+
+
+class Class():
+    def __init__(self, name, superclass, methods, interface):
+        self.name = name
+        self.methods = methods.methods  # passed method var is a ClassBody class
+        # find the constructor method
+        self.constructor = None
+        for statementList in methods.methods:
+            for method in statementList.expresion:
+                if (type(method) == AssignFunction and (
+                    method.name == "constructor"
+                )):
+                    print("found constructor", method.name)
+                    self.constructor = global_scope[method.name]
+                else:
+                    print(type(method))
+
+        if (superclass is not None):
+            self.superclass = superclass
+        if (interface is not None):
+            self.interface = interface
+
+    def eval(self):
+        # Push onto the stack
+        global_scope["classes"].append(self)
+
+    def instanciate(self, args):
+        instance = deepcopy(self)
+        if (instance.constructor is not None):
+            # call the constructor
+            instance.constructor.eval(ArgList(args))
+        # Push onto the stack
+        global_scope["classinstances"].append(instance)
+        # find our index in the class list
+        return ClassPointer(global_scope["classinstances"].index(instance))
+
+    def get_methods(self):
+        return self.methods
+
+    def get_superclass(self):
+        return self.superclass
+
+    def get_interface(self):
+        return self.interface
+
+    def get_name(self):
+        return self.name
+
+    def get_method(self, name):
+        for method in self.methods:
+            if (method.get_name() == name):
+                return method
+        # if we didn't find the method look in the superclass
+        if (self.superclass is not None):
+            # get the superclass
+            superclass = None
+            for class_ in global_scope["classes"]:
+                if (class_.get_name() == self.superclass):
+                    superclass = class_
+                    break
+            if (superclass is not None):
+                return superclass.get_method(name)
+
+        return None
+
+    def call_method(self, name, args):
+        method = self.get_method(name)
+        if (method is None):
+            raise Exception("Method not found")
+        # construct a set of local variables
+        local_scope = ArgList(args)
+        # push all local methods into the local scope
+        for local_method in self.methods:
+            local_scope.push(local_method)
+
+        return method.eval(args)
+
+    def get_method_names(self):
+        return [method.get_name() for method in self.methods]
+
+
+class AbstractClass(Class):
+    def __init__(self, name, superclass, methods, interface):
+        Class.__init__(self, name, superclass, methods, interface)
+
+    def eval(self):
+        # Push onto the stack
+        global_scope["classes"].append(self)
+
+    def instanciate(self):
+        raise Exception("Abstract classes cannot be instantiated")
+
+
+class ClassBody():
+    def __init__(self, methods):
+        self.methods = methods
+
+    def add_method(self, method):
+        self.methods.append(method)
+
+    def get_methods(self):
+        return self.methods
+
+    def eval(self):
+        return Null()

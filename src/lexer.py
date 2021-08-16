@@ -7,12 +7,12 @@ class Lexer():
         self.lexer = LexerGenerator()
 
     def _add_tokens(self):
-        # build up a set of token names and regexes they match
+        # Type Detector
         self.lexer.add('INTEGER', '-?\d+')
         self.lexer.add('FLOAT', '-?\d+.\d+')
-
-        self.lexer.add('STRING', '(""".?""")|(".?")|(\'.?\')')
+        self.lexer.add('STRING', '"(.*?)"|\'(.*?)\'')
         self.lexer.add('BOOLEAN', "true(?!\w)|false(?!\w)")
+        # Keywords
         self.lexer.add('IF', 'if(?!\w)')
         self.lexer.add('ELSE', 'else(?!\w)')
         self.lexer.add('END', 'end(?!\w)')
@@ -22,11 +22,30 @@ class Lexer():
         self.lexer.add('LET', r'let(?!\w)')
         self.lexer.add('VAR', r'var(?!\w)')
         self.lexer.add('PRINT', r"print(?!\w)")
-
         self.lexer.add('FUNCTION', r'func(?!\w)')
         self.lexer.add('MODULE', r'mod(?!\w)')
         self.lexer.add('IMPORT', r'import(?!\w)')
+        self.lexer.add('RETURN', r'return(?!\w)')
+        self.lexer.add('IN', r'in(?!\w)')
+        self.lexer.add('AS', r'as(?!\w)')
+        self.lexer.add('WHILE', r'while(?!\w)')
+        self.lexer.add('FOR', r'for(?!\w)')
+        self.lexer.add('BREAK', r'break(?!\w)')
+        self.lexer.add('CONTINUE', r'continue(?!\w)')
+        self.lexer.add('TYPEOF', r'typeof(?!\w)')
+        self.lexer.add('TYPE', r'Type(?!\w)')
+        self.lexer.add('CLASS', r'Class(?!\w)')
+        self.lexer.add('EXTENDS', r'extends(?!\w)')
+        self.lexer.add('IMPLEMENTS', r'implements(?!\w)')
+        self.lexer.add('ABSTRACT', r'abstract(?!\w)')
+        self.lexer.add('PRIVATE', r'private(?!\w)')
+        self.lexer.add('NEW', r'new(?!\w)')
+
+        self.lexer.add('DEBUG_PRINT_STACK', r'debug_print_stack(?!\w)')
+        # Identifiers (var, function names)
         self.lexer.add('IDENTIFIER', r"[a-zA-Z_][a-zA-Z0-9_]*")
+
+        # Signs
         self.lexer.add('EQ', '==')
         self.lexer.add('NEQ', '!=')
         self.lexer.add('GREATER_THAN_EQ', '>=')
@@ -34,9 +53,10 @@ class Lexer():
         self.lexer.add('GREATER_THAN', '>')
         self.lexer.add('LESS_THAN', r'\<')
         self.lexer.add('LEFT_SHIFT', r'\<\<')
-        self.lexer.add('PERCENT', r'\%')
-
         self.lexer.add('RIGHT_SHIFT', r'\>\>')
+        self.lexer.add('PERCENT', r'\%')
+        self.lexer.add("SINGLE_LINE_COMMENT", r'//.*')
+        self.lexer.add("MULTI_LINE_COMMENT", r'\/\*(.*?)\*\/')
 
         self.lexer.add('EQUAL', r'\=')
         self.lexer.add('OPEN_SQUARE-BRACKET', r'\[')
