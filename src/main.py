@@ -65,7 +65,9 @@ def main(args):
                         logging.debug((token))
                     tokens = lexer.lex(text_input)  # relex
 
-                parser.parse(tokens).eval()
+                ast_tree = parser.parse(tokens)
+                if ast_tree is not None:
+                    ast_tree.eval()
             except Exception as e:
                 if (e == KeyboardInterrupt):
                     print("\n")

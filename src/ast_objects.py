@@ -63,14 +63,12 @@ class Null():
 
 
 class Identifier():
-    def __init__(self, value):
+    def __init__(self, value, scope):
         self.value = value
+        self.scope = scope
 
     def eval(self):
-        if self.value in global_scope:
-            return global_scope[self.value]
-        else:
-            return Null()
+        return self.scope.get(self.value)
 
 
 class BinaryOp():
@@ -120,21 +118,25 @@ class Print():
         self.print_null = print_null
 
     def eval(self):
-        val = self.value.eval()
+        val = self.value if not callable(
+            getattr(self.value, "eval", None)) else self.value.eval()
         if (val is not None and type(val) is not Null) or self.print_null:
             print(val)
 
 
 class Assign():
-    def __init__(self, name, value, type):
+    def __init__(self, name, value, type, scope):
         self.name = name
         self.value = value
-        #self.type = type if type != None else type(value).toString()
-
+        self.type = type if type != None else type(value).__name__
+        self.scope = scope
+        
     def eval(self):
         if self.name is None:
-            raise Exception("Assign: NullPtr")
-        global_scope[self.name] = self.value.eval()
+            raise Exception("Assign: Unnamed varible")
+        if self.scope is not None:
+            raise Exception("Assign: No scope declared")
+        self.scope.set(self.name, self.value.eval());
 
 
 class If():
@@ -150,13 +152,103 @@ class If():
             self.else_expresion.eval()
 
 
-class Block():
-    def __init__(self, expresion):
-        self.expresion = expresion
+class Pointer():
+    def __init__(self, index, stack):
+        self.index = index
+        self.stack = stack
+
+    def deref(self, target=None):
+        if self.index is None:
+            raise Exception("NullPtr")
+        if target is None:
+            target = self.stack
+        if target is not None and (self.index < len(target) - 1):
+            return target[self.index]
+        if target is None:
+            raise Exception("Pointer: deref: no target")
+        raise Exception("Pointer deref: Index out of range")
+
+    def delete(self, target=None):
+        if self.index is None:
+            raise Exception("NullPtr")
+        if target is None:
+            target = self.stack
+        if target is not None and (self.index < len(target) - 1):
+            del target[self.index]
+            return Null()
+        if target is None:
+            raise Exception("Pointer: deref: no target")
+        raise Exception("Pointer deref: Index out of range")
+
+
+class Scope():
+    def __init__(self, parent=None, children=None, name=None):
+        self.parent = parent
+        self.children = children
+        self.stack = []
+        self.heap = {}
+        self.name = name
+
+        # Create a new dict for this scope
+        global_scope["scopes"].append(self)
+
+    def add_child(self, child):
+        child.parent = self
+        self.children.append(child)
+
+    def get(self, key):
+        if key not in self.heap:
+            return self.parent.get(key)
+
+        ptr = self.heap[key]
+        return ptr.deref(self.stack)
+
+    def set(self, key, value):
+        self.stack.push(value)
+        # get the index of the key
+        index = self.stack.index(value)
+        ptr = Pointer(index, self.stack)
+        self.heap[key] = ptr
+        return ptr
+
+    def delete(self, key):
+        if key not in self.heap:
+            return self.parent.delete(key)
+
+        ptr = self.heap[key]
+        ptr.delete(self.stack)
 
     def eval(self):
-        for exp in self.expresion:
-            exp.eval()
+        for child in self.children:
+            child.eval()
+
+
+class Block(Scope):
+    def __init__(self, parent=None, children=None, name=None, expressions=[]):
+        Scope.__init__(self, parent, children, name)
+        self.stack = []
+        self.heap = {}
+        self.name = name
+        self.scope = Scope(self, name=name)
+        self.scope.stack = self.stack
+        self.scope.heap = self.heap
+        self.scope.name = name
+        self.expressions = expressions
+
+    def eval(self):
+        for i, expr in enumerate(self.expressions):
+            # if (i == len(self.expressions) - 1): # TODO: Only return return statments, not just the last one
+            #    return expr.eval() # If this is the last expression, return the last value
+            expr.eval()
+
+
+class Program():
+    def __init__(self, statments):
+        self.statments = statments
+
+    def eval(self):
+        for statment in self.statments:
+            statment.eval()
 
 
 class Parameter():
@@ -178,7 +270,7 @@ class Function():
         self.args = args  # A List of Parameter()s
         self.body = body
 
-    def eval(self, argsList):  # Args list is a list of Args
+    def eval(self, argsList, scope):  # Args list is a list of Args
         prev_values = {}
         for parameter in self.args.args:
             if (parameter.name in global_scope):
@@ -212,14 +304,15 @@ class Function():
 
 
 class AssignFunction():
-    def __init__(self, name, args, body):
+    def __init__(self, name, args, body, scope):
         self.name = name
         self.args = args
         self.body = body
+        self.scope = scope
 
     def eval(self):
-        global_scope[self.name] = Function(
-            self.name, self.args, self.body)
+        self.scope.set(self.name, Function(
+            self.name, self.args, self.body))
 
 
 class Comment():
@@ -262,21 +355,21 @@ class Import():
 
 
 class CallFunction():
-    def __init__(self, name, args):
+    def __init__(self, name, args, scope):
         self.name = name
         self.args = args
+        self.scope = scope
 
     def eval(self):
-        if self.name not in global_scope:
+        func = self.scope.get(self.name)
+        if not func:
             raise Exception("CallFunction: Function undefined")
-
-        func = global_scope[self.name]
         if type(func) is not Function:
             raise Exception("CallFunction: Cannot call " + type(func).__name__)
         if func.body is None:
             raise Exception("CallFunction: No body")
         else:
-            func.eval(self.args)
+            func.eval(self.args, scope)
 
 
 class Arg():
@@ -377,12 +470,6 @@ class TypeOf():
         return type(self.expresion.eval()).__name__
 
 
-class Pointer():
-    def __init__(self, index, path):
-        self.index = index
-        self.path = path
-
-
 class ClassPointer(Pointer):
     def __init__(self, index):
         Pointer.__init__(self, index, "classinstances")
@@ -403,7 +490,7 @@ class Class():
                     method.name == "constructor"
                 )):
                     print("found constructor", method.name)
-                    self.constructor = global_scope[method.name]
+                    self.constructor = method.scope.get(method.name)
                 else:
                     print(type(method))
 

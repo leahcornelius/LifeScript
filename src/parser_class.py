@@ -1,6 +1,7 @@
 from rply import ParserGenerator, Token
 from pprint import pprint
 from ast_objects import *
+from memory import *
 
 
 class Parser():
@@ -13,7 +14,7 @@ class Parser():
              'OPEN_BRACKET', 'CLOSE_BRACKET', 'EQUAL', 'EQ', 'NEQ', 'GREATER_THAN_EQ', 'LESS_THAN_EQ', 'GREATER_THAN', 'LESS_THAN', 'OPEN_SQUARE_BRACKET', 'CLOSE_SQUARE_BRACKET', 'COLON',
              'OPEN_CURLY_BRACKET', 'CLOSE_CURLY_BRACKET',
              '$end', 'NEWLINE', 'FUNCTION', 'SEMI_COLON', 'PRINT', 'PERCENT', "DOT", "TYPEOF", "RETURN", "AS", "COMMA", "WHILE", "FOR", "DEBUG_PRINT_STACK", "SINGLE_LINE_COMMENT", "MULTI_LINE_COMMENT", "IMPORT",
-             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW"
+             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW", "PRINT_SCOPES"
              ],
             # A list of precedence rules with ascending precedence, to
             # disambiguate ambiguous production rules.
@@ -35,9 +36,23 @@ class Parser():
         )
 
     def parse(self):
-        # Main function.
+
         @self.pg.production('program : statement_list')
         def program(p):
+            return Program([p[0]])
+
+        # When we enter a new scope we need to add it to the stack
+        # so that we can keep track of nested scopes.
+        @self.pg.production('scope : OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
+        def scope_program(p):
+            # Create a new block scope
+            scope = Block(top_scope(), [], None, [p[1]])
+            top_scope().add_child(scope)
+            return scope
+
+        # Expand block scopes to their contents
+        @self.pg.production('statement : scope')
+        def statement_scope(p):
             return p[0]
 
         @self.pg.production('statement_list : statement SEMI_COLON')
@@ -106,10 +121,6 @@ class Parser():
         def boolean(p):
             return Bool(p[0].value)
 
-        @self.pg.production('statement : OPEN_CURLY_BRACKET statement CLOSE_CURLY_BRACKET')
-        def expression_curly(p):
-            return p[1]
-
         @self.pg.production('expression : STRING')
         def string(p):
             return String(p[0].value)
@@ -138,16 +149,16 @@ class Parser():
             name = p[1].value
             value = p[3]
             return Assign(name, value, None)
-        #                                0  1            2         3             4                  5       6                   7                  8       9
+        #                                0  1            2         3             4     5
 
-        @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
-        @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
+        @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET scope scope')
+        @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET scope')
         def expression_if(p):
-            condition = p[3].gettokentype()
-            if len(p) == 10:
-                return If(condition, p[6], p[8])
-            elif len(p) == 7:
-                return If(p[2], p[5], None)
+            condition = p[2].gettokentype()
+            if len(p) == 6:
+                return If(condition, p[4], p[5])
+            elif len(p) == 5:
+                return If(p[2].gettokentype(), p[4], None)
             else:
                 raise Exception('Invalid IF statement, length=' + str(len(p)))
 
@@ -180,7 +191,7 @@ class Parser():
         @self.pg.production('statement : FUNCTION IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
         def function_declaration(p):
             if (len(p) == 7):
-                return AssignFunction(p[1].value, [], p[5])
+                return AssignFunction(p[1].value, ArgList([]), p[5])
             return AssignFunction(p[1].value, p[3], p[6])
 
         # function call
@@ -188,12 +199,22 @@ class Parser():
         @self.pg.production('statement : IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')
         def function_call(p):
             if (len(p) == 4):
-                return CallFunction(p[0].value, [])
+                return CallFunction(p[0].value,  ArgList([]))
             return CallFunction(p[0].value, p[2])
 
+        # TODO : Move the following dbs & ps commands to a preluded std libary
         @self.pg.production('statement : DEBUG_PRINT_STACK OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
         def print_stack(p):
             return DebugPrintStack()
+
+        @self.pg.production('statement : PRINT_SCOPES OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
+        def print_scopes(p):
+            ss = get_scope_stack()
+            for s in ss:
+                for child in s.children:
+                    print("Child node: ", child)
+                print("Parent Node", s)
+            # return Print(get_scope_stack())
 
         @self.pg.production('expression : TYPEOF IDENTIFIER')
         @self.pg.production('expression : TYPEOF expression')

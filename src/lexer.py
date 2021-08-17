@@ -41,7 +41,9 @@ class Lexer():
         self.lexer.add('PRIVATE', r'private(?!\w)')
         self.lexer.add('NEW', r'new(?!\w)')
 
-        self.lexer.add('DEBUG_PRINT_STACK', r'debug_print_stack(?!\w)')
+        self.lexer.add('DEBUG_PRINT_STACK', r'dps(?!\w)')
+        self.lexer.add('PRINT_SCOPES', r'ps(?!\w)')
+
         # Identifiers (var, function names)
         self.lexer.add('IDENTIFIER', r"[a-zA-Z_][a-zA-Z0-9_]*")
 
