@@ -1,3 +1,4 @@
 rply
 coloredlogs
 pprint
+numpy

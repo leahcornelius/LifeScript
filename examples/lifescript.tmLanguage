@@ -1,0 +1,1166 @@
+{
+	"version": "v1.0.0",
+	"name": "Lifescript",
+	"scopeName": "source.lifescript",
+	"patterns": [
+		{
+			"comment": "boxed slice literal",
+			"begin": "(<)(\\[)",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.brackets.angle.lifescript"
+				},
+				"2": {
+					"name": "punctuation.brackets.square.lifescript"
+				}
+			},
+			"end": ">",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.brackets.angle.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block-comments"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#gtypes"
+				},
+				{
+					"include": "#lvariables"
+				},
+				{
+					"include": "#lifetimes"
+				},
+				{
+					"include": "#punctuation"
+				},
+				{
+					"include": "#types"
+				}
+			]
+		},
+		{
+			"comment": "macro type metavariables",
+			"name": "meta.macro.metavariable.type.lifescript",
+			"match": "(\\$)((crate)|([A-Z][A-Za-z0-9_]*))((:)(block|expr|ident|item|lifetime|literal|meta|path?|stmt|tt|ty|vis))?",
+			"captures": {
+				"1": {
+					"name": "keyword.operator.macro.dollar.lifescript"
+				},
+				"3": {
+					"name": "keyword.other.crate.lifescript"
+				},
+				"4": {
+					"name": "entity.name.type.metavariable.lifescript"
+				},
+				"6": {
+					"name": "keyword.operator.key-value.lifescript"
+				},
+				"7": {
+					"name": "variable.other.metavariable.specifier.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#keywords"
+				}
+			]
+		},
+		{
+			"comment": "macro metavariables",
+			"name": "meta.macro.metavariable.lifescript",
+			"match": "(\\$)([a-z][A-Za-z0-9_]*)((:)(block|expr|ident|item|lifetime|literal|meta|path?|stmt|tt|ty|vis))?",
+			"captures": {
+				"1": {
+					"name": "keyword.operator.macro.dollar.lifescript"
+				},
+				"2": {
+					"name": "variable.other.metavariable.name.lifescript"
+				},
+				"4": {
+					"name": "keyword.operator.key-value.lifescript"
+				},
+				"5": {
+					"name": "variable.other.metavariable.specifier.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#keywords"
+				}
+			]
+		},
+		{
+			"comment": "macro rules",
+			"name": "meta.macro.rules.lifescript",
+			"match": "\\b(macro_rules!)\\s+(([a-z0-9_]+)|([A-Z][a-z0-9_]*))\\s+(\\{)",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.macro.rules.lifescript"
+				},
+				"3": {
+					"name": "entity.name.function.macro.lifescript"
+				},
+				"4": {
+					"name": "entity.name.type.macro.lifescript"
+				},
+				"5": {
+					"name": "punctuation.brackets.curly.lifescript"
+				}
+			}
+		},
+		{
+			"comment": "attributes",
+			"name": "meta.attribute.lifescript",
+			"begin": "(#)(\\!?)(\\[)",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.attribute.lifescript"
+				},
+				"2": {
+					"name": "keyword.operator.attribute.inner.lifescript"
+				},
+				"3": {
+					"name": "punctuation.brackets.attribute.lifescript"
+				}
+			},
+			"end": "\\]",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.brackets.attribute.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block-comments"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"include": "#lifetimes"
+				},
+				{
+					"include": "#punctuation"
+				},
+				{
+					"include": "#strings"
+				},
+				{
+					"include": "#gtypes"
+				},
+				{
+					"include": "#types"
+				}
+			]
+		},
+		{
+			"comment": "modules",
+			"match": "(mod)\\s+((?:r#(?!crate|[Ss]elf|super))?[a-z][A-Za-z0-9_]*)",
+			"captures": {
+				"1": {
+					"name": "storage.type.lifescript"
+				},
+				"2": {
+					"name": "entity.name.module.lifescript"
+				}
+			}
+		},
+		{
+			"comment": "external crate imports",
+			"name": "meta.import.lifescript",
+			"begin": "\\b(extern)\\s+(crate)",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.lifescript"
+				},
+				"2": {
+					"name": "keyword.other.crate.lifescript"
+				}
+			},
+			"end": ";",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.semi.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block-comments"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"include": "#punctuation"
+				}
+			]
+		},
+		{
+			"comment": "use statements",
+			"name": "meta.use.lifescript",
+			"begin": "\\b(use)\\s",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.other.lifescript"
+				}
+			},
+			"end": ";",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.semi.lifescript"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block-comments"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"include": "#namespaces"
+				},
+				{
+					"include": "#punctuation"
+				},
+				{
+					"include": "#types"
+				},
+				{
+					"include": "#lvariables"
+				}
+			]
+		},
+		{
+			"include": "#block-comments"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#lvariables"
+		},
+		{
+			"include": "#constants"
+		},
+		{
+			"include": "#gtypes"
+		},
+		{
+			"include": "#functions"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#lifetimes"
+		},
+		{
+			"include": "#macros"
+		},
+		{
+			"include": "#namespaces"
+		},
+		{
+			"include": "#punctuation"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#variables"
+		}
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"comment": "documentation comments",
+					"name": "comment.line.documentation.lifescript",
+					"match": "^\\s*///.*"
+				},
+				{
+					"comment": "line comments",
+					"name": "comment.line.double-slash.lifescript",
+					"match": "\\s*//.*"
+				}
+			]
+		},
+		"block-comments": {
+			"patterns": [
+				{
+					"comment": "empty block comments",
+					"name": "comment.block.lifescript",
+					"match": "/\\*\\*/"
+				},
+				{
+					"comment": "block documentation comments",
+					"name": "comment.block.documentation.lifescript",
+					"begin": "/\\*\\*",
+					"end": "\\*/",
+					"patterns": [
+						{
+							"include": "#block-comments"
+						}
+					]
+				},
+				{
+					"comment": "block comments",
+					"name": "comment.block.lifescript",
+					"begin": "/\\*(?!\\*)",
+					"end": "\\*/",
+					"patterns": [
+						{
+							"include": "#block-comments"
+						}
+					]
+				}
+			]
+		},
+		"constants": {
+			"patterns": [
+				{
+					"comment": "ALL CAPS constants",
+					"name": "constant.other.caps.lifescript",
+					"match": "\\b[A-Z]{2}[A-Z0-9_]*\\b"
+				},
+				{
+					"comment": "constant declarations",
+					"match": "\\b(const)\\s+([A-Z][A-Za-z0-9_]*)\\b",
+					"captures": {
+						"1": {
+							"name": "storage.type.lifescript"
+						},
+						"2": {
+							"name": "constant.other.caps.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "decimal integers and floats",
+					"name": "constant.numeric.decimal.lifescript",
+					"match": "\\b\\d[\\d_]*(\\.?)[\\d_]*(?:(E)([+-])([\\d_]+))?(f32|f64|i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\\b",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.dot.decimal.lifescript"
+						},
+						"2": {
+							"name": "keyword.operator.exponent.lifescript"
+						},
+						"3": {
+							"name": "keyword.operator.exponent.sign.lifescript"
+						},
+						"4": {
+							"name": "constant.numeric.decimal.exponent.mantissa.lifescript"
+						},
+						"5": {
+							"name": "entity.name.type.numeric.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "hexadecimal integers",
+					"name": "constant.numeric.hex.lifescript",
+					"match": "\\b0x[\\da-fA-F_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\\b",
+					"captures": {
+						"1": {
+							"name": "entity.name.type.numeric.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "octal integers",
+					"name": "constant.numeric.oct.lifescript",
+					"match": "\\b0o[0-7_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\\b",
+					"captures": {
+						"1": {
+							"name": "entity.name.type.numeric.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "binary integers",
+					"name": "constant.numeric.bin.lifescript",
+					"match": "\\b0b[01_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\\b",
+					"captures": {
+						"1": {
+							"name": "entity.name.type.numeric.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "booleans",
+					"name": "constant.language.bool.lifescript",
+					"match": "\\b(true|false)\\b"
+				}
+			]
+		},
+		"escapes": {
+			"comment": "escapes: ASCII, byte, Unicode, quote, regex",
+			"name": "constant.character.escape.lifescript",
+			"match": "(\\\\)(?:(?:(x[0-7][0-7a-fA-F])|(u(\\{)[\\da-fA-F]{4,6}(\\}))|.))",
+			"captures": {
+				"1": {
+					"name": "constant.character.escape.backslash.lifescript"
+				},
+				"2": {
+					"name": "constant.character.escape.bit.lifescript"
+				},
+				"3": {
+					"name": "constant.character.escape.unicode.lifescript"
+				},
+				"4": {
+					"name": "constant.character.escape.unicode.punctuation.lifescript"
+				},
+				"5": {
+					"name": "constant.character.escape.unicode.punctuation.lifescript"
+				}
+			}
+		},
+		"functions": {
+			"patterns": [
+				{
+					"comment": "pub as a function",
+					"match": "\\b(pub)(\\()",
+					"captures": {
+						"1": {
+							"name": "keyword.other.lifescript"
+						},
+						"2": {
+							"name": "punctuation.brackets.round.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "function definition",
+					"name": "meta.function.definition.lifescript",
+					"begin": "\\b(fn)\\s+((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)((\\()|(<))",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.fn.lifescript"
+						},
+						"2": {
+							"name": "entity.name.function.lifescript"
+						},
+						"4": {
+							"name": "punctuation.brackets.round.lifescript"
+						},
+						"5": {
+							"name": "punctuation.brackets.angle.lifescript"
+						}
+					},
+					"end": "\\{|;",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.brackets.curly.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#block-comments"
+						},
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#keywords"
+						},
+						{
+							"include": "#lvariables"
+						},
+						{
+							"include": "#constants"
+						},
+						{
+							"include": "#gtypes"
+						},
+						{
+							"include": "#functions"
+						},
+						{
+							"include": "#lifetimes"
+						},
+						{
+							"include": "#macros"
+						},
+						{
+							"include": "#namespaces"
+						},
+						{
+							"include": "#punctuation"
+						},
+						{
+							"include": "#strings"
+						},
+						{
+							"include": "#types"
+						},
+						{
+							"include": "#variables"
+						}
+					]
+				},
+				{
+					"comment": "function/method calls, chaining",
+					"name": "meta.function.call.lifescript",
+					"begin": "((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(\\()",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.function.lifescript"
+						},
+						"2": {
+							"name": "punctuation.brackets.round.lifescript"
+						}
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.brackets.round.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#block-comments"
+						},
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#keywords"
+						},
+						{
+							"include": "#lvariables"
+						},
+						{
+							"include": "#constants"
+						},
+						{
+							"include": "#gtypes"
+						},
+						{
+							"include": "#functions"
+						},
+						{
+							"include": "#lifetimes"
+						},
+						{
+							"include": "#macros"
+						},
+						{
+							"include": "#namespaces"
+						},
+						{
+							"include": "#punctuation"
+						},
+						{
+							"include": "#strings"
+						},
+						{
+							"include": "#types"
+						},
+						{
+							"include": "#variables"
+						}
+					]
+				},
+				{
+					"comment": "function/method calls with turbofish",
+					"name": "meta.function.call.lifescript",
+					"begin": "((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(?=::<.*>\\()",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.function.lifescript"
+						}
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.brackets.round.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#block-comments"
+						},
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#keywords"
+						},
+						{
+							"include": "#lvariables"
+						},
+						{
+							"include": "#constants"
+						},
+						{
+							"include": "#gtypes"
+						},
+						{
+							"include": "#functions"
+						},
+						{
+							"include": "#lifetimes"
+						},
+						{
+							"include": "#macros"
+						},
+						{
+							"include": "#namespaces"
+						},
+						{
+							"include": "#punctuation"
+						},
+						{
+							"include": "#strings"
+						},
+						{
+							"include": "#types"
+						},
+						{
+							"include": "#variables"
+						}
+					]
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"comment": "control flow keywords",
+					"name": "keyword.control.lifescript",
+					"match": "\\b(await|break|continue|do|else|for|if|loop|match|return|try|while|yield)\\b"
+				},
+				{
+					"comment": "storage keywords",
+					"name": "keyword.other.lifescript storage.type.lifescript",
+					"match": "\\b(extern|let|macro|mod)\\b"
+				},
+				{
+					"comment": "const keyword",
+					"name": "storage.modifier.lifescript",
+					"match": "\\b(const)\\b"
+				},
+				{
+					"comment": "type keyword",
+					"name": "keyword.declaration.type.lifescript storage.type.lifescript",
+					"match": "\\b(type)\\b"
+				},
+				{
+					"comment": "enum keyword",
+					"name": "keyword.declaration.enum.lifescript storage.type.lifescript",
+					"match": "\\b(enum)\\b"
+				},
+				{
+					"comment": "trait keyword",
+					"name": "keyword.declaration.trait.lifescript storage.type.lifescript",
+					"match": "\\b(trait)\\b"
+				},
+				{
+					"comment": "struct keyword",
+					"name": "keyword.declaration.struct.lifescript storage.type.lifescript",
+					"match": "\\b(struct)\\b"
+				},
+				{
+					"comment": "storage modifiers",
+					"name": "storage.modifier.lifescript",
+					"match": "\\b(abstract|static)\\b"
+				},
+				{
+					"comment": "other keywords",
+					"name": "keyword.other.lifescript",
+					"match": "\\b(as|async|become|box|dyn|move|final|impl|in|override|priv|pub|ref|typeof|union|unsafe|unsized|use|virtual|where)\\b"
+				},
+				{
+					"comment": "fn",
+					"name": "keyword.other.fn.lifescript",
+					"match": "\\bfn\\b"
+				},
+				{
+					"comment": "crate",
+					"name": "keyword.other.crate.lifescript",
+					"match": "\\bcrate\\b"
+				},
+				{
+					"comment": "mut",
+					"name": "storage.modifier.mut.lifescript",
+					"match": "\\bmut\\b"
+				},
+				{
+					"comment": "logical operators",
+					"name": "keyword.operator.logical.lifescript",
+					"match": "(\\^|\\||\\|\\||&&|<<|>>|!)(?!=)"
+				},
+				{
+					"comment": "logical AND, borrow references",
+					"name": "keyword.operator.borrow.and.lifescript",
+					"match": "&(?![&=])"
+				},
+				{
+					"comment": "assignment operators",
+					"name": "keyword.operator.assignment.lifescript",
+					"match": "(\\+=|-=|\\*=|/=|%=|\\^=|&=|\\|=|<<=|>>=)"
+				},
+				{
+					"comment": "single equal",
+					"name": "keyword.operator.assignment.equal.lifescript",
+					"match": "(?<![<>])=(?!=|>)"
+				},
+				{
+					"comment": "comparison operators",
+					"name": "keyword.operator.comparison.lifescript",
+					"match": "(=(=)?(?!>)|!=|<=|(?<!=)>=)"
+				},
+				{
+					"comment": "math operators",
+					"name": "keyword.operator.math.lifescript",
+					"match": "(([+%]|(\\*(?!\\w)))(?!=))|(-(?!>))|(/(?!/))"
+				},
+				{
+					"comment": "less than, greater than (special case)",
+					"match": "(?:\\b|(?:(\\))|(\\])|(\\})))[ \\t]+([<>])[ \\t]+(?:\\b|(?:(\\()|(\\[)|(\\{)))",
+					"captures": {
+						"1": {
+							"name": "punctuation.brackets.round.lifescript"
+						},
+						"2": {
+							"name": "punctuation.brackets.square.lifescript"
+						},
+						"3": {
+							"name": "punctuation.brackets.curly.lifescript"
+						},
+						"4": {
+							"name": "keyword.operator.comparison.lifescript"
+						},
+						"5": {
+							"name": "punctuation.brackets.round.lifescript"
+						},
+						"6": {
+							"name": "punctuation.brackets.square.lifescript"
+						},
+						"7": {
+							"name": "punctuation.brackets.curly.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "namespace operator",
+					"name": "keyword.operator.namespace.lifescript",
+					"match": "::"
+				},
+				{
+					"comment": "dereference asterisk",
+					"match": "(\\*)(?=\\w+)",
+					"captures": {
+						"1": {
+							"name": "keyword.operator.dereference.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "subpattern binding",
+					"name": "keyword.operator.subpattern.lifescript",
+					"match": "@"
+				},
+				{
+					"comment": "dot access",
+					"name": "keyword.operator.access.dot.lifescript",
+					"match": "\\.(?!\\.)"
+				},
+				{
+					"comment": "ranges, range patterns",
+					"name": "keyword.operator.range.lifescript",
+					"match": "\\.{2}(=|\\.)?"
+				},
+				{
+					"comment": "colon",
+					"name": "keyword.operator.key-value.lifescript",
+					"match": ":(?!:)"
+				},
+				{
+					"comment": "dashrocket, skinny arrow",
+					"name": "keyword.operator.arrow.skinny.lifescript",
+					"match": "->"
+				},
+				{
+					"comment": "hashrocket, fat arrow",
+					"name": "keyword.operator.arrow.fat.lifescript",
+					"match": "=>"
+				},
+				{
+					"comment": "dollar macros",
+					"name": "keyword.operator.macro.dollar.lifescript",
+					"match": "\\$"
+				},
+				{
+					"comment": "question mark operator, questionably sized, macro kleene matcher",
+					"name": "keyword.operator.question.lifescript",
+					"match": "\\?"
+				}
+			]
+		},
+		"interpolations": {
+			"comment": "curly brace interpolations",
+			"name": "meta.interpolation.lifescript",
+			"match": "({)[^\"{}]*(})",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.interpolation.lifescript"
+				},
+				"2": {
+					"name": "punctuation.definition.interpolation.lifescript"
+				}
+			}
+		},
+		"lifetimes": {
+			"patterns": [
+				{
+					"comment": "named lifetime parameters",
+					"match": "(['])([a-zA-Z_][0-9a-zA-Z_]*)(?!['])\\b",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.lifetime.lifescript"
+						},
+						"2": {
+							"name": "entity.name.type.lifetime.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "borrowing references to named lifetimes",
+					"match": "(\\&)(['])([a-zA-Z_][0-9a-zA-Z_]*)(?!['])\\b",
+					"captures": {
+						"1": {
+							"name": "keyword.operator.borrow.lifescript"
+						},
+						"2": {
+							"name": "punctuation.definition.lifetime.lifescript"
+						},
+						"3": {
+							"name": "entity.name.type.lifetime.lifescript"
+						}
+					}
+				}
+			]
+		},
+		"macros": {
+			"patterns": [
+				{
+					"comment": "macros",
+					"name": "meta.macro.lifescript",
+					"match": "(([a-z_][A-Za-z0-9_]*!)|([A-Z_][A-Za-z0-9_]*!))",
+					"captures": {
+						"2": {
+							"name": "entity.name.function.macro.lifescript"
+						},
+						"3": {
+							"name": "entity.name.type.macro.lifescript"
+						}
+					}
+				}
+			]
+		},
+		"namespaces": {
+			"patterns": [
+				{
+					"comment": "namespace (non-type, non-function path segment)",
+					"match": "(?<![A-Za-z0-9_])([a-z0-9_]+)((?<!super|self)::)",
+					"captures": {
+						"1": {
+							"name": "entity.name.namespace.lifescript"
+						},
+						"2": {
+							"name": "keyword.operator.namespace.lifescript"
+						}
+					}
+				}
+			]
+		},
+		"types": {
+			"patterns": [
+				{
+					"comment": "numeric types",
+					"match": "(?<![A-Za-z])(f32|f64|i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)\\b",
+					"captures": {
+						"1": {
+							"name": "entity.name.type.numeric.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "parameterized types",
+					"begin": "\\b([A-Z][A-Za-z0-9]*)(<)",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.type.lifescript"
+						},
+						"2": {
+							"name": "punctuation.brackets.angle.lifescript"
+						}
+					},
+					"end": ">",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.brackets.angle.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#block-comments"
+						},
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#keywords"
+						},
+						{
+							"include": "#lvariables"
+						},
+						{
+							"include": "#lifetimes"
+						},
+						{
+							"include": "#punctuation"
+						},
+						{
+							"include": "#types"
+						},
+						{
+							"include": "#variables"
+						}
+					]
+				},
+				{
+					"comment": "primitive types",
+					"name": "entity.name.type.primitive.lifescript",
+					"match": "\\b(bool|char|str)\\b"
+				},
+				{
+					"comment": "trait declarations",
+					"match": "\\b(trait)\\s+([A-Z][A-Za-z0-9]*)\\b",
+					"captures": {
+						"1": {
+							"name": "keyword.declaration.trait.lifescript storage.type.lifescript"
+						},
+						"2": {
+							"name": "entity.name.type.trait.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "struct declarations",
+					"match": "\\b(struct)\\s+([A-Z][A-Za-z0-9]*)\\b",
+					"captures": {
+						"1": {
+							"name": "keyword.declaration.struct.lifescript storage.type.lifescript"
+						},
+						"2": {
+							"name": "entity.name.type.struct.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "enum declarations",
+					"match": "\\b(enum)\\s+([A-Z][A-Za-z0-9_]*)\\b",
+					"captures": {
+						"1": {
+							"name": "keyword.declaration.enum.lifescript storage.type.lifescript"
+						},
+						"2": {
+							"name": "entity.name.type.enum.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "type declarations",
+					"match": "\\b(type)\\s+([A-Z][A-Za-z0-9_]*)\\b",
+					"captures": {
+						"1": {
+							"name": "keyword.declaration.type.lifescript storage.type.lifescript"
+						},
+						"2": {
+							"name": "entity.name.type.declaration.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "types",
+					"name": "entity.name.type.lifescript",
+					"match": "\\b[A-Z][A-Za-z0-9]*\\b(?!!)"
+				}
+			]
+		},
+		"gtypes": {
+			"patterns": [
+				{
+					"comment": "option types",
+					"name": "entity.name.type.option.lifescript",
+					"match": "\\b(Some|None)\\b"
+				},
+				{
+					"comment": "result types",
+					"name": "entity.name.type.result.lifescript",
+					"match": "\\b(Ok|Err)\\b"
+				}
+			]
+		},
+		"punctuation": {
+			"patterns": [
+				{
+					"comment": "comma",
+					"name": "punctuation.comma.lifescript",
+					"match": ","
+				},
+				{
+					"comment": "curly braces",
+					"name": "punctuation.brackets.curly.lifescript",
+					"match": "[{}]"
+				},
+				{
+					"comment": "parentheses, round brackets",
+					"name": "punctuation.brackets.round.lifescript",
+					"match": "[()]"
+				},
+				{
+					"comment": "semicolon",
+					"name": "punctuation.semi.lifescript",
+					"match": ";"
+				},
+				{
+					"comment": "square brackets",
+					"name": "punctuation.brackets.square.lifescript",
+					"match": "[\\[\\]]"
+				},
+				{
+					"comment": "angle brackets",
+					"name": "punctuation.brackets.angle.lifescript",
+					"match": "(?<!=)[<>]"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"comment": "double-quoted strings and byte strings",
+					"name": "string.quoted.double.lifescript",
+					"begin": "(b?)(\")",
+					"beginCaptures": {
+						"1": {
+							"name": "string.quoted.byte.raw.lifescript"
+						},
+						"2": {
+							"name": "punctuation.definition.string.lifescript"
+						}
+					},
+					"end": "\"",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#escapes"
+						},
+						{
+							"include": "#interpolations"
+						}
+					]
+				},
+				{
+					"comment": "double-quoted raw strings and raw byte strings",
+					"name": "string.quoted.double.lifescript",
+					"begin": "(b?r)(#*)(\")",
+					"beginCaptures": {
+						"1": {
+							"name": "string.quoted.byte.raw.lifescript"
+						},
+						"2": {
+							"name": "punctuation.definition.string.raw.lifescript"
+						},
+						"3": {
+							"name": "punctuation.definition.string.lifescript"
+						}
+					},
+					"end": "(\")(\\2)",
+					"endCaptures": {
+						"1": {
+							"name": "punctuation.definition.string.lifescript"
+						},
+						"2": {
+							"name": "punctuation.definition.string.raw.lifescript"
+						}
+					}
+				},
+				{
+					"comment": "characters and bytes",
+					"name": "string.quoted.single.char.lifescript",
+					"begin": "(b)?(')",
+					"beginCaptures": {
+						"1": {
+							"name": "string.quoted.byte.raw.lifescript"
+						},
+						"2": {
+							"name": "punctuation.definition.char.lifescript"
+						}
+					},
+					"end": "'",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.char.lifescript"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#escapes"
+						}
+					]
+				}
+			]
+		},
+		"lvariables": {
+			"patterns": [
+				{
+					"comment": "self",
+					"name": "variable.language.self.lifescript",
+					"match": "\\b[Ss]elf\\b"
+				},
+				{
+					"comment": "super",
+					"name": "variable.language.super.lifescript",
+					"match": "\\bsuper\\b"
+				}
+			]
+		},
+		"variables": {
+			"patterns": [
+				{
+					"comment": "variables",
+					"name": "variable.other.lifescript",
+					"match": "\\b(?<!(?<!\\.)\\.)(?:r#(?!(crate|[Ss]elf|super)))?[a-z0-9_]+\\b"
+				}
+			]
+		}
+	}
+	
+}

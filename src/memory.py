@@ -3,6 +3,7 @@ from traceback import print_exc
 
 global_scope = {}  # A Dict of all the variables in the global scope
 scope_stack = []  
+
 def push_scope(scope):
     global scope_stack
     scope_stack.append(scope)

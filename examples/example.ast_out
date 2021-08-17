@@ -1,0 +1,28 @@
+Program":[
+   "StatmentList":[
+      "StatmentList":[
+         "AssignFunction":"functionName(ArgList":[
+            "Parameter":"arg1":"<Token(""IDENTIFIER",
+            "String"")> = None",
+            "Parameter":"arg2":"<Token(""IDENTIFIER",
+            "String"")> = None"
+         ]")"{
+            "Program":[
+               "StatmentList":[
+                  "(140214446472104) Print":
+                        "Sum":
+                            "Identifier":
+                                "arg1":"<Scope (None)":"Memory("[]{}") Children Count":"0 has parent":"True> = arg1
+                            +
+                            Identifier":
+                                "arg2":"<Scope (None)":"Memory("[]{}") Children Count":"0 has parent":True> = arg2
+               ]
+            ]
+         }
+      ],
+      "CallFunction":"functionName(ArgList":[
+         "Arg":"arg1 = String":"Hello",
+         "Arg":"arg2 = String":"World"
+      ]")"
+   ]
+]

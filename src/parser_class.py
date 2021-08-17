@@ -1,3 +1,4 @@
+from numpy.core.defchararray import mod
 from rply import ParserGenerator, Token
 from pprint import pprint
 from ast_objects import *
@@ -14,7 +15,7 @@ class Parser():
              'OPEN_BRACKET', 'CLOSE_BRACKET', 'EQUAL', 'EQ', 'NEQ', 'GREATER_THAN_EQ', 'LESS_THAN_EQ', 'GREATER_THAN', 'LESS_THAN', 'OPEN_SQUARE_BRACKET', 'CLOSE_SQUARE_BRACKET', 'COLON',
              'OPEN_CURLY_BRACKET', 'CLOSE_CURLY_BRACKET',
              '$end', 'NEWLINE', 'FUNCTION', 'SEMI_COLON', 'PRINT', 'PERCENT', "DOT", "TYPEOF", "RETURN", "AS", "COMMA", "WHILE", "FOR", "DEBUG_PRINT_STACK", "SINGLE_LINE_COMMENT", "MULTI_LINE_COMMENT", "IMPORT",
-             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW", "PRINT_SCOPES"
+             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW", "PRINT_SCOPES", "NULL", "STR", "FLOAT", "INT"
              ],
             # A list of precedence rules with ascending precedence, to
             # disambiguate ambiguous production rules.
@@ -36,21 +37,28 @@ class Parser():
         )
 
     def parse(self):
-
+        # The top level object of the AST
         @self.pg.production('program : statement_list')
         def program(p):
-            return Program([p[0]])
+            statement_list = p[0]
+            program = Program([statement_list], get_scope_stack()[-1])
+            statement_list.parent = program
+            program.add_child(statement_list)
+            return program
 
         # When we enter a new scope we need to add it to the stack
         # so that we can keep track of nested scopes.
+
         @self.pg.production('scope : OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
         def scope_program(p):
             # Create a new block scope
-            scope = Block(top_scope(), [], None, [p[1]])
-            top_scope().add_child(scope)
+            program = p[1]
+            scope = Block(None, [], None, [program])
+
+            scope.add_child(program)
             return scope
 
-        # Expand block scopes to their contents
+        # Block scopes can be nested as statments
         @self.pg.production('statement : scope')
         def statement_scope(p):
             return p[0]
@@ -58,12 +66,19 @@ class Parser():
         @self.pg.production('statement_list : statement SEMI_COLON')
         @self.pg.production('statement_list : statement')
         def statement_list(p):
-            return StatmentList([p[0]])
+            statement = p[0]
+            statementList = StatmentList([p[0]])
+            statementList.add_child(statement)
+            return statementList
 
         @self.pg.production('statement_list : statement_list statement SEMI_COLON')
         @self.pg.production('statement_list : statement_list statement')
         def statement_list(p):
-            return StatmentList([p[0], p[1]])
+            statements = [p[0], p[1]]
+            statemenList = StatmentList(statements)
+            for statement in statements:
+                statemenList.add_child(statement)
+            return statemenList
 
         @self.pg.production('expression : IDENTIFIER')
         def statement(p):
@@ -71,7 +86,10 @@ class Parser():
 
         @self.pg.production('statement : PRINT OPEN_BRACKET expression CLOSE_BRACKET SEMI_COLON')
         def statement(p):
-            return Print(p[2])
+            expr = p[2]
+            print_ = Print(expr)
+            print_.add_child(expr)
+            return print_
 
         @self.pg.production('condition_list : condition')
         def condition_list(p):
@@ -84,7 +102,10 @@ class Parser():
         @self.pg.production('condition : expression GREATER_THAN_EQ expression')
         @self.pg.production('condition : expression LESS_THAN_EQ expression')
         def condition(p):
-            return ConditionResolver(p[0], p[1].gettokentype(), p[2])
+            CR = ConditionResolver(p[0], p[1].gettokentype(), p[2])
+            CR.add_child(p[0])
+            CR.add_child(p[2])
+            return CR
 
         @self.pg.production('expression : expression PLUS expression')
         @self.pg.production('expression : expression MINUS expression')
@@ -94,16 +115,21 @@ class Parser():
             left = p[0]
             right = p[2]
             operator = p[1]
+            to_return = None
             if operator.gettokentype() == 'PLUS':
-                return Sum(left, right)
+                to_return = Sum(left, right)
             elif operator.gettokentype() == 'MINUS':
-                return Sub(left, right)
+                to_return = Sub(left, right)
             elif operator.gettokentype() == 'MUL':
-                return Multiply(left, right)
+                to_return = Multiply(left, right)
             elif operator.gettokentype() == 'DIV':
-                return Divide(left, right)
+                to_return = Divide(left, right)
             else:
                 raise Exception("Unknown operator: " + operator.gettokentype())
+
+            to_return.add_child(left)
+            to_return.add_child(right)
+            return to_return
 
         @self.pg.production('expression : INTEGER')
         def number(p):
@@ -131,34 +157,53 @@ class Parser():
 
         @self.pg.production('statement : expression')
         def debug_statement(p):
-            return Print(p[0])
+            expr = p[0]
+            print_ = Print(expr)
+            print_.add_child(expr)
+            return print_
 
         @self.pg.production('expression : expression PERCENT expression')
         def expression_modulo(p):
             left = p[0]
             right = p[2]
-            return Modulo(left, right)
+            mod_ = Modulo(left, right)
+            mod_.add_child(left)
+            mod_.add_child(right)
+            return mod_
 
         @self.pg.production('statement : VAR IDENTIFIER EQUAL expression SEMI_COLON')
         @self.pg.production('statement : LET IDENTIFIER EQUAL expression SEMI_COLON')
         @self.pg.production('statement : LET IDENTIFIER COLON LESS_THAN expression GREATER_THAN EQUAL expression SEMI_COLON')
         def expression_assign(p):
             # Check if the type has been declared
+            assign_ = Null()
             if p[2].gettokentype() == 'COLON' and p[3].gettokentype() == 'LESS_THAN' and p[5].gettokentype() == 'GREATER_THAN':
-                return Assign(p[1].value, p[7], p[4])
+                assign_ = Assign(p[1].value, p[7], p[4])
+                assign_.add_child(p[4])
+                assign_.add_child(p[7])
+                return assign_
             name = p[1].value
             value = p[3]
-            return Assign(name, value, None)
+            assign_ = Assign(name, value, None)
+            assign_.add_child(value)
+            return assign_
         #                                0  1            2         3             4     5
 
         @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET scope scope')
         @self.pg.production('statement : IF OPEN_BRACKET condition CLOSE_BRACKET scope')
         def expression_if(p):
-            condition = p[2].gettokentype()
+            condition = p[2]
             if len(p) == 6:
-                return If(condition, p[4], p[5])
+                if_ = If(condition, p[4], p[5])
+                if_.add_child(p[2])
+                if_.add_child(p[4])
+                if_.add_child(p[5])
+                return if_
             elif len(p) == 5:
-                return If(p[2].gettokentype(), p[4], None)
+                if_ = If(p[2], p[4], None)
+                if_.add_child(p[2])
+                if_.add_child(p[4])
+                return if_
             else:
                 raise Exception('Invalid IF statement, length=' + str(len(p)))
 
@@ -174,16 +219,29 @@ class Parser():
             if (len(p) == 5):
                 return Parameter(p[0].value, p[2], p[4])
             elif (p[1].gettokentype() == 'EQUAL'):
-                return Arg(p[0].value, p[2])
+                arg_ = Arg(p[0].value, p[2])
+                arg_.add_child(p[2])
+                return arg_
             elif (p[1].gettokentype() == 'COLON'):
-                return Parameter(p[0].value, p[2])
+                par_ = Parameter(p[0].value, p[2])
+                if len(p) == 5:
+                    par_.add_child(p[4])
+                return par_
+            else:
+                raise Exception(
+                    'Invalid parameter/arg declaration, length=' + str(len(p)))
 
         @self.pg.production('parameters_list : parameters')
         @self.pg.production('parameters_list : parameters_list COMMA parameters')
         def parameters_list(p):
             if len(p) == 3:
-                return ArgList(p[0].args + [p[2]])
-            return ArgList([p[0]])
+                argList_ = ArgList(p[0].args + [p[2]])
+                argList_.add_child(p[0])
+                argList_.add_child(p[2])
+                return argList_
+            argList_ = ArgList([p[0]])
+            argList_.add_child(p[0])
+            return argList_
 
         # function declaration
 
@@ -191,24 +249,37 @@ class Parser():
         @self.pg.production('statement : FUNCTION IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET OPEN_CURLY_BRACKET program CLOSE_CURLY_BRACKET')
         def function_declaration(p):
             if (len(p) == 7):
-                return AssignFunction(p[1].value, ArgList([]), p[5])
-            return AssignFunction(p[1].value, p[3], p[6])
+                AssignFn_ = AssignFunction(p[1].value, ArgList([]), p[5])
+                AssignFn_.add_child(p[5])
+                return AssignFn_
+            AssignFn_ = AssignFunction(p[1].value, p[3], p[6])
+            AssignFn_.add_child(p[3])
+            AssignFn_.add_child(p[6])
+            return AssignFn_
 
         # function call
-        @self.pg.production('statement : IDENTIFIER OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
-        @self.pg.production('statement : IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')
+        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
+        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')
         def function_call(p):
             if (len(p) == 4):
                 return CallFunction(p[0].value,  ArgList([]))
-            return CallFunction(p[0].value, p[2])
 
+            CallFn_ = CallFunction(p[0].value, p[2])
+            CallFn_.add_child(p[2])
+            return CallFn_
+
+        @self.pg.production('expression : call_function')
+        def expression_call_fn(p):
+            return p[0]
         # TODO : Move the following dbs & ps commands to a preluded std libary
+
         @self.pg.production('statement : DEBUG_PRINT_STACK OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
         def print_stack(p):
             return DebugPrintStack()
 
         @self.pg.production('statement : PRINT_SCOPES OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
         def print_scopes(p):
+            print("This is deprecated")
             ss = get_scope_stack()
             for s in ss:
                 for child in s.children:
@@ -222,7 +293,9 @@ class Parser():
             if type(p[1]) == Token and p[1].gettokentype() == 'IDENTIFIER':
                 return TypeOf(Identifier(p[0].value))
             elif type(p[1]) != Token:
-                return TypeOf(p[1])
+                TO_ = TypeOf(p[1])
+                TO_.add_child(p[1])
+                return TO_
 
         # comments
         @self.pg.production(r'expression : SINGLE_LINE_COMMENT')
@@ -247,9 +320,13 @@ class Parser():
         @self.pg.production('statement : PRIVATE VAR IDENTIFIER COLON IDENTIFIER')
         def private_var(p):
             if len(p) == 8:
-                return PrivateVar(p[2].value, p[6], p[4])
+                PrivateVar_ = PrivateVar(p[2].value, p[6], p[4])
+                PrivateVar_.add_child(p[6])
+                return PrivateVar_
             elif len(p) == 6:
-                return PrivateVar(p[2].value, p[4], None)
+                PrivateVar_ = PrivateVar(p[2].value, p[4], None)
+                PrivateVar_.add_child(p[4])
+                return PrivateVar_
             elif len(p) == 5:
                 return PrivateVar(p[2].value, None, p[4])
             else:
@@ -261,9 +338,13 @@ class Parser():
         @self.pg.production('class_body : class_body program')
         def class_body(p):
             if len(p) == 1:
-                return ClassBody([p[0]])
+                ClassBody_ = ClassBody([p[0]])
+                ClassBody_.add_child(p[0])
             else:
-                return ClassBody(p[0] + p[1])
+                ClassBody_ = ClassBody(p[0] + p[1])
+                ClassBody_.add_child(p[0])
+                ClassBody_.add_child(p[1])
+                return ClassBody_
 
         # classes                        0          1     2     3     4            5             6          7          8                  9          10
         @self.pg.production('statement : IDENTIFIER COLON COLON CLASS OPEN_BRACKET CLOSE_BRACKET IMPLEMENTS IDENTIFIER OPEN_CURLY_BRACKET class_body CLOSE_CURLY_BRACKET')
@@ -272,13 +353,20 @@ class Parser():
         @self.pg.production('statement : IDENTIFIER COLON COLON CLASS OPEN_BRACKET IDENTIFIER CLOSE_BRACKET IMPLEMENTS IDENTIFIER OPEN_CURLY_BRACKET class_body CLOSE_CURLY_BRACKET')
         def class_statement(p):
             if (len(p) == 12):
-                return Class(p[0].value, p[5].value, p[10], p[8].value)
+                Class_ = Class(p[0].value, p[5].value, p[10], p[8].value)
+                Class_.add_child(p[10])
+                return Class_
             elif (len(p) == 11):
-                return Class(p[0].value, None, p[9], p[7].value)
+                Class_ = Class(p[0].value, None, p[9], p[7].value)
+                Class_.add_child(p[9])
+                return Class_
             elif (len(p) == 10):
-                return Class(p[0].value, p[5], p[8], None)
+                Class_ = Class(p[0].value, p[5], p[8], None)
+                Class_.add_child(p[8])
             elif (len(p) == 9):
-                return Class(p[0].value, None, p[7], None)
+                Class_ = Class(p[0].value, None, p[7], None)
+                Class_.add_child(p[7])
+                return Class_
             else:
                 raise Exception(
                     'Invalid class statement, length=' + str(len(p)))
@@ -290,24 +378,44 @@ class Parser():
         @self.pg.production('statement : IDENTIFIER COLON COLON ABSTRACT CLASS OPEN_BRACKET IDENTIFIER CLOSE_BRACKET IMPLEMENTS IDENTIFIER OPEN_CURLY_BRACKET class_body CLOSE_CURLY_BRACKET')
         def class_statement(p):
             if (len(p) == 13):
-                return AbstractClass(p[0].value, p[6].value, p[11], p[9].value)
+                AbClass_ = AbstractClass(
+                    p[0].value, p[6].value, p[11], p[9].value)
+                AbClass_.add_child(p[11])
+                return AbClass_
             elif (len(p) == 12):
-                return AbstractClass(p[0].value, None, p[10], p[8].value)
+                AbClass_ = AbstractClass(p[0].value, None, p[10], p[8].value)
+                AbClass_.add_child(p[10])
+                return AbClass_
             elif (len(p) == 11):
-                return AbstractClass(p[0].value, p[6], p[9].value, None)
+                AbClass_ = AbstractClass(p[0].value, p[6], p[9].value, None)
+                AbClass_.add_child(p[9])
+                return AbClass_
             elif (len(p) == 10):
-                return AbstractClass(p[0].value, None, p[8].value, None)
+                AbClass_ = AbstractClass(p[0].value, None, p[8].value, None)
+                AbClass_.add_child(p[8])
+                return AbClass_
             else:
                 raise Exception(
                     'Invalid abstract class statement, length=' + str(len(p)))
 
+        @self.pg.production('expression : NULL')
+        def null_statement(p):
+            return Null()
+
+        @self.pg.production('expression : STR OPEN_BRACKET expression CLOSE_BRACKET')
+        def string_statement(p):
+            return String(p[2])
         # instanciating classes
+
         @self.pg.production('expression : NEW IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')
         @self.pg.production('expression : NEW IDENTIFIER OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
         def new_class(p):
             # find the class in the global scope
             for class_ in global_scope["classes"]:
                 if class_.name == p[1].value:
+                    if type(class_) == AbstractClass:
+                        raise Exception(
+                            'Cannot instantiate abstract class ' + p[1].value)
                     # instanciate the class
                     if len(p) == 6:
                         return class_.instanciate(p[4])

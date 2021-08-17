@@ -1,121 +1,247 @@
-from rply.parsergenerator import ParserGenerator
 from memory import *
 from copy import deepcopy
 
+# The most basic of the AST nodes, an abstract syntax tree node.
+# All AST classes are subclasses of this class.
 
-class Expression():
-    def __init__(self, expression):
+
+class Return():
+    def __init__(self, expr):
+        self.expr = expr
+
+    def eval(self, env):
+        if hasattr(self.expr, 'eval'):
+            return self.expr.eval(env)
+        return self.expr
+
+
+class Node():
+    def __init__(self, parent, children=[]):
+        self.parent = parent
+        self.children = children
+        self.scope = None
+
+    def __repr__(self) -> str:
+        return "Node({})".format(id(self))
+
+    def get_parent(self):
+        return self.parent
+
+    def get_children(self):
+        return self.children
+
+    def get(self, key):
+        scope = self.get_scope()
+        if scope is not None:
+            return scope.get(key)
+        return Null()
+
+    def get_scope(self):
+        if self.parent is None:
+            if self.scope is None:
+                self.scope = Scope(self)
+            return self.scope
+        else:
+            if type(self.parent) is Scope:
+                return self.parent
+            if hasattr(self.parent, "scope") and self.parent.scope is not None:
+                return self.parent.scope
+            return self.parent.get_scope()
+
+    def set_parent(self, parent=None):
+        self.parent = parent
+
+    def add_child(self, child):
+        if self.children is None:
+            self.children = [child]
+        else:
+            child.set_parent(self)
+            self.children.append(child)
+
+    def remove_child(self, child):
+        self.children.remove(child)
+
+
+class Expression(Node):
+    def __init__(self, expression, parent=None):
         self.expression = expression
+        Node.__init__(self, parent)
+        self.children = []
 
     def eval(self):
         return self.expression.eval()
 
+    def __repr__(self):
+        return "Expression: " + str(self.expression)
 
-class Number():
-    def __init__(self, value):
+
+class Number(Node):
+    def __init__(self, value, parent=None):
         self.value = value
+        Node.__init__(self, parent)
 
     def eval(self):
         return int(self.value)
 
+    def __repr__(self):
+        return "Number: " + str(self.value)
 
-class Float():
-    def __init__(self, value):
+
+class Float(Node):
+    def __init__(self, value, parent=None):
         self.value = value
+        Node.__init__(self, parent)
 
     def eval(self):
         return float(self.value)
 
+    def __repr__(self):
+        return "Float: " + str(self.value)
 
-class PrivateVar():
-    def __init__(self, name, value, type=None):
+
+class PrivateVar(Node):
+    def __init__(self, name, value, type=None, parent=None):
         self.name = name
         self.value = Null() if (value is None) else value
         if (type is None):
             self.type = type(value).__name__
 
+        Node.__init__(self, parent)
+
     def eval(self):
         pass
 
+    def __repr__(self):
+        return "PrivateVar: " + str(self.name) + " " + str(self.value) + " " + str(self.type)
 
-class String():
-    def __init__(self, value):
+
+class String(Node):
+    def __init__(self, value, parent=None):
         self.value = value
+        Node.__init__(self, parent)
 
     def eval(self):
         return self.value.replace('"', '')
 
+    def __repr__(self):
+        return "String: " + str(self.value)
 
-class Bool():
-    def __init__(self, value):
+
+class Bool(Node):
+    def __init__(self, value, parent=None):
         self.value = value
+        Node.__init__(self, parent)
 
     def eval(self):
         return self.value
 
+    def __repr__(self):
+        return "Bool: " + str(self.value)
 
-class Null():
-    def __init__(self):
-        pass
+
+class Null(Node):
+    def __init__(self, parent=None):
+        Node.__init__(self, parent)
 
     def eval(self):
         return None
 
+    def __repr__(self):
+        return "Null"
 
-class Identifier():
-    def __init__(self, value, scope):
+    def __add__(self, other):
+        return str(self) + str(other)
+
+
+class Identifier(Node):
+    def __init__(self, value, parent=None):
         self.value = value
-        self.scope = scope
+        self.scope = None
+        Node.__init__(self, parent)
 
     def eval(self):
+        if (self.scope is None):
+            # get the scope from the parent
+            self.scope = self.parent.get_scope()
         return self.scope.get(self.value)
 
+    def __repr__(self):
+        return "Identifier: " + str(self.value) + ": <" + str(self.scope) + "> = " + str(self.value)
 
-class BinaryOp():
-    def __init__(self, left, right):
+
+class BinaryOp(Node):
+    def __init__(self, left, right, parent=None):
         self.left = left
         self.right = right
+        Node.__init__(self, parent)
+
+    def __repr__(self):
+        return "BinaryOp: " + str(self.left) + " " + str(self.right)
 
 
 class Multiply(BinaryOp):
     def eval(self):
         return self.left.eval() * self.right.eval()
 
+    def __repr__(self):
+        return "Multiply: " + str(self.left) + " * " + str(self.right)
+
 
 class Modulo(BinaryOp):
     def eval(self):
         return self.left.eval() % self.right.eval()
+
+    def __repr__(self):
+        return "Modulo: " + str(self.left) + " % " + str(self.right)
 
 
 class RightShift(BinaryOp):
     def eval(self):
         return self.left.eval() << self.right.eval()
 
+    def __repr__(self):
+        return "RightShift: " + str(self.left) + " >> " + str(self.right)
+
 
 class LeftShift(BinaryOp):
     def eval(self):
         return self.left.eval() >> self.right.eval()
+
+    def __repr__(self):
+        return "LeftShift: " + str(self.left) + " << " + str(self.right)
 
 
 class Divide(BinaryOp):
     def eval(self):
         return self.left.eval() / self.right.eval()
 
+    def __repr__(self):
+        return "Divide: " + str(self.left) + " / " + str(self.right)
+
 
 class Sum(BinaryOp):
     def eval(self):
         return self.left.eval() + self.right.eval()
+
+    def __repr__(self):
+        return "Sum: " + str(self.left) + " + " + str(self.right)
 
 
 class Sub(BinaryOp):
     def eval(self):
         return self.left.eval() - self.right.eval()
 
+    def __repr__(self):
+        return "Sub: " + str(self.left) + " - " + str(self.right)
 
-class Print():
-    def __init__(self, value, print_null=False):
+
+class Print(Node):
+    def __init__(self, value, print_null=False, parent=None):
+        Node.__init__(self, parent)
         self.value = value
         self.print_null = print_null
+        # Node.__init__(self, parent)
+        # self.children = []
 
     def eval(self):
         val = self.value if not callable(
@@ -123,27 +249,37 @@ class Print():
         if (val is not None and type(val) is not Null) or self.print_null:
             print(val)
 
+    def __repr__(self):
+        val = self.value
+        return "(" + str(id(self)) + ") Print: " + str(val)
 
-class Assign():
-    def __init__(self, name, value, type, scope):
+
+class Assign(Node):
+    def __init__(self, name, value, type, parent=None):
         self.name = name
         self.value = value
-        self.type = type if type != None else type(value).__name__
-        self.scope = scope
-        
+        self.type = None  # type if type != None else type(value).__name__
+        self.scope = None
+        Node.__init__(self, parent)
+
     def eval(self):
         if self.name is None:
             raise Exception("Assign: Unnamed varible")
-        if self.scope is not None:
-            raise Exception("Assign: No scope declared")
-        self.scope.set(self.name, self.value.eval());
+        if (self.scope is None):
+            # get the scope from the parent
+            self.scope = self.parent.get_scope()
+        self.scope.set(self.name, self.value.eval())
+
+    def __repr__(self):
+        return "Assign: " + str(self.name) + ": <" + str(self.type) + "> = " + str(self.value)
 
 
-class If():
-    def __init__(self, condition, expression, else_expresion=None):
+class If(Node):
+    def __init__(self, condition, expression, else_expresion=None, parent=None):
         self.condition = condition
         self.expression = expression
         self.else_expresion = else_expresion
+        Node.__init__(self, parent)
 
     def eval(self):
         if self.condition.eval():
@@ -151,22 +287,30 @@ class If():
         elif self.else_expresion is not None:
             self.else_expresion.eval()
 
+    def __repr__(self):
+        return "If: " + str(self.condition) + "  { " + str(self.expression) + " } { " + str(self.else_expresion) + " }"
 
-class Pointer():
-    def __init__(self, index, stack):
+
+class Pointer(Node):
+    def __init__(self, index, stack, parent=None):
         self.index = index
         self.stack = stack
+        Node.__init__(self, parent)
 
     def deref(self, target=None):
         if self.index is None:
             raise Exception("NullPtr")
         if target is None:
             target = self.stack
-        if target is not None and (self.index < len(target) - 1):
+
+        if target is not None and (self.index <= len(target) - 1):
             return target[self.index]
+
         if target is None:
             raise Exception("Pointer: deref: no target")
-        raise Exception("Pointer deref: Index out of range")
+
+        raise Exception(
+            f"Pointer deref: Index out of range, index: {self.index}, len(target): {len(target)}")
 
     def delete(self, target=None):
         if self.index is None:
@@ -180,9 +324,12 @@ class Pointer():
             raise Exception("Pointer: deref: no target")
         raise Exception("Pointer deref: Index out of range")
 
+    def __repr__(self):
+        return "Pointer: " + str(self.index) + " -> " + str(self.stack)
+
 
 class Scope():
-    def __init__(self, parent=None, children=None, name=None):
+    def __init__(self, parent=None, children=[], name=None):
         self.parent = parent
         self.children = children
         self.stack = []
@@ -196,15 +343,21 @@ class Scope():
         child.parent = self
         self.children.append(child)
 
+    def set_parent(self, parent):
+        self.parent = parent
+
     def get(self, key):
         if key not in self.heap:
-            return self.parent.get(key)
+            if self.parent is not None:
+                return self.parent.get(key)
+            else:
+                return Null()
 
         ptr = self.heap[key]
         return ptr.deref(self.stack)
 
     def set(self, key, value):
-        self.stack.push(value)
+        self.stack.append(value)
         # get the index of the key
         index = self.stack.index(value)
         ptr = Pointer(index, self.stack)
@@ -222,9 +375,15 @@ class Scope():
         for child in self.children:
             child.eval()
 
+    def __repr__(self):
+        return "Scope (" + str(self.name) + "): Memory(" + str(self.stack) + " " + str(self.heap) + ") Children Count: " + str(len(self.children)) + " has parent: " + str(self.parent is not None)
+
+    def iter(self):
+        yield from self.children
+
 
 class Block(Scope):
-    def __init__(self, parent=None, children=None, name=None, expressions=[]):
+    def __init__(self, parent=None, children=[], name=None, expressions=[]):
         Scope.__init__(self, parent, children, name)
         self.stack = []
         self.heap = {}
@@ -237,25 +396,41 @@ class Block(Scope):
 
     def eval(self):
         for i, expr in enumerate(self.expressions):
-            # if (i == len(self.expressions) - 1): # TODO: Only return return statments, not just the last one
-            #    return expr.eval() # If this is the last expression, return the last value
-            expr.eval()
+            res = expr.eval()
+            if isinstance(res, Return):
+                return res.value
+
+    def get_scope(self):
+        return self.scope
+
+    def __repr__(self):
+        return "Block Scope (" + str(self.name) + "): Memory(" + str(self.stack) + " " + str(self.heap) + ") Children Count: " + str(len(self.children)) + " has parent: " + str(self.parent is not None)
 
 
-class Program():
-    def __init__(self, statments):
+class Program(Node):
+    def __init__(self, statments, parent=None):
         self.statments = statments
+        Node.__init__(self, parent)
 
     def eval(self):
         for statment in self.statments:
+            if isinstance(statment, Return) or len(self.statments) == 1:
+                return statment.eval()
             statment.eval()
 
+    def iter(self):
+        yield from self.statments
 
-class Parameter():
-    def __init__(self, name, type, default=None):
+    def __repr__(self):
+        return "Program: " + str(self.statments)
+
+
+class Parameter(Node):
+    def __init__(self, name, type, default=None, parent=None):
         self.name = name
         self.type = type
         self.default = default
+        Node.__init__(self, parent)
 
     def eval(self):
         if self.default is not None:
@@ -263,78 +438,100 @@ class Parameter():
         else:
             return Null()
 
+    def __repr__(self):
+        return "Parameter: " + str(self.name) + ": <" + str(self.type) + "> = " + str(self.default)
 
-class Function():
-    def __init__(self, name, args, body):
+
+class Function(Node):
+    def __init__(self, name, args, body, parent=None):
         self.name = name
         self.args = args  # A List of Parameter()s
         self.body = body
+        self.scope = None
+        Node.__init__(self, parent)
 
     def eval(self, argsList, scope):  # Args list is a list of Args
-        prev_values = {}
+        self.scope = Scope(self, name=str(self.name) + "LocalFnScope")
         for parameter in self.args.args:
-            if (parameter.name in global_scope):
-                prev_values[parameter.name] = global_scope[parameter.name]
             found = False
             for arg in argsList.args:
                 if arg.name == parameter.name:
-                    if arg.value.eval is not None:
-                        global_scope[arg.name] = arg.value.eval()
+                    if hasattr(arg.value, "eval"):
+                        self.scope.set(arg.name, arg.value.eval())
                     else:
-                        global_scope[arg.name] = arg.value
+                        self.scope.set(arg.name, arg.value)
                     found = True
                     break
             if not found:  # If the argument is not in the list, we assume that it is the default value
                 default = parameter.eval()
                 if default.eval() is not None:
-                    global_scope[parameter.name] = default.eval()
+                    self.scope.set(parameter.name, default.eval())
                 elif default is not None:
-                    global_scope[parameter.name] = default
+                    self.scope.set(parameter.name, default)
                 else:
-                    global_scope[parameter.name] = Null()
+                    self.scope.set(parameter.name, Null())
+        body_scope_copy = deepcopy(self.body.get_scope())
+
+        self.body.scope = self.scope
         self.body.eval()
-        for arg in prev_values:
-            global_scope[arg] = prev_values[arg]
-        for arg in self.args.args:
-            if arg.name in global_scope:
-                del global_scope[arg.name]
+        self.scope = None
+        self.body.scope = body_scope_copy
 
     def get_name(self):
         return self.name
 
+    def __repr__(self):
+        return "Function: " + str(self.name) + "(" + str(self.args) + ") { " + str(self.body) + " }"
 
-class AssignFunction():
-    def __init__(self, name, args, body, scope):
+
+class AssignFunction(Node):
+    def __init__(self, name, args, body, parent=None):
         self.name = name
         self.args = args
         self.body = body
-        self.scope = scope
+        self.scope = None
+        Node.__init__(self, parent)
 
     def eval(self):
+        if (self.scope is None):
+            # get the scope from the parent
+            self.scope = self.parent.get_scope()
         self.scope.set(self.name, Function(
             self.name, self.args, self.body))
 
+    def __repr__(self):
+        return "AssignFunction: " + str(self.name) + "(" + str(self.args) + ") { " + str(self.body) + " }"
 
-class Comment():
-    def __init__(self, value):
+
+class Comment(Node):
+    def __init__(self, value, parent=None):
         self.value = value
+        Node.__init__(self, parent)
 
     def eval(self):
         pass
 
+    def __repr__(self):
+        return "Comment: " + str(self.value)
 
-class ArgList():
-    def __init__(self, args):
+
+class ArgList(Node):
+    def __init__(self, args, parent=None):
         self.args = args
+        Node.__init__(self, parent)
 
     def eval(self):
         raise Exception("ArgList: Called eval")
 
+    def __repr__(self):
+        return "ArgList: " + str(self.args)
 
-class Import():
-    def __init__(self, path, atlas=None):
+
+class Import(Node):
+    def __init__(self, path, atlas=None, parent=None):
         self.path = path
         self.atlas = atlas
+        Node.__init__(self, parent)
 
     def eval(self):
         if self.atlas is None:
@@ -353,14 +550,21 @@ class Import():
                 # form a function
                 global_scope[key] = Function(key, value.input, value.code)
 
+    def __repr__(self):
+        return "Import: " + str(self.path) + " as " + str(self.atlas)
 
-class CallFunction():
-    def __init__(self, name, args, scope):
+
+class CallFunction(Node):
+    def __init__(self, name, args, parent=None):
         self.name = name
         self.args = args
-        self.scope = scope
+        self.scope = None
+        Node.__init__(self, parent)
 
     def eval(self):
+        if (self.scope is None):
+            # get the scope from the parent
+            self.scope = self.parent.get_scope()
         func = self.scope.get(self.name)
         if not func:
             raise Exception("CallFunction: Function undefined")
@@ -369,24 +573,32 @@ class CallFunction():
         if func.body is None:
             raise Exception("CallFunction: No body")
         else:
-            func.eval(self.args, scope)
+            func.eval(self.args, self.scope)
+
+    def __repr__(self):
+        return "CallFunction: " + str(self.name) + "(" + str(self.args) + ")"
 
 
-class Arg():
-    def __init__(self, name, value):
+class Arg(Node):
+    def __init__(self, name, value, parent=None):
         self.name = name
         self.value = value
+        Node.__init__(self, parent)
 
-    def derive_type(self, parent):
+    def derive_type(self, parent=None):
         if parent + "." + self.name in global_scope["ParameterStack"]:
             return global_scope["ParameterStack"][parent + "." + self.name].type
         else:
             return type(self.value).toString()
 
+    def __repr__(self):
+        return "Arg: " + str(self.name) + " = " + str(self.value)
 
-class Type():
-    def __init__(self, type):
+
+class Type(Node):
+    def __init__(self, type, parent=None):
         self.type = type
+        Node.__init__(self, parent)
 
     def toString(self):
         return self.type
@@ -394,18 +606,25 @@ class Type():
     def eval(self):
         return self.type
 
+    def __repr__(self):
+        return "Type: " + str(self.type)
 
-class DebugPrintStack():
-    def __init__(self):
-        pass
+
+class DebugPrintStack(Node):
+    def __init__(self, parent=None):
+        Node.__init__(self, parent)
 
     def eval(self):
         print(global_scope)
 
+    def __repr__(self):
+        return "DebugPrintStack()"
 
-class StatmentList():
-    def __init__(self, expresions):
+
+class StatmentList(Node):
+    def __init__(self, expresions, parent=None):
         self.expresion = []
+        Node.__init__(self, parent)
         for exp in expresions:
             self.expresion.append(exp)
 
@@ -416,71 +635,184 @@ class StatmentList():
     def add(self, exp):
         self.expresion.append(exp)
 
+    def __repr__(self):
+        return "StatmentList: " + str(self.expresion)
 
-class ConditionResolver():
-    def __init__(self, expresion, type, other_expresion):
+    def iter(self):
+        yield from self.expresion
+# Abstract Condition Class
+
+
+class Condition(Node):
+    def __init__(self, one, two, parent=None):
+        Node.__init__(self, parent)
+        self.one = one
+        self.two = two
+
+    def __repr__(self):
+        return "Condition: " + str(self.one) + " " + str(self.two)
+
+
+class Equal(Condition):
+    def eval(self):
+        return self.one.eval() == self.two.eval()
+
+    def __repr__(self):
+        return "Equal: " + str(self.one) + " == " + str(self.two)
+
+
+class NotEqual(Condition):
+    def eval(self):
+        return self.one.eval() != self.two.eval()
+
+    def __repr__(self):
+        return "NotEqual: " + str(self.one) + " != " + str(self.two)
+
+
+class GreaterThan(Condition):
+    def eval(self):
+        return self.one.eval() > self.two.eval()
+
+    def __repr__(self):
+        return "GreaterThan: " + str(self.one) + " > " + str(self.two)
+
+
+class LessThan(Condition):
+    def eval(self):
+        return self.one.eval() < self.two.eval()
+
+    def __repr__(self):
+        return "LessThan: " + str(self.one) + " < " + str(self.two)
+
+
+class GreaterThanOrEqual(Condition):
+    def eval(self):
+        return self.one.eval() >= self.two.eval()
+
+    def __repr__(self):
+        return "GreaterThanOrEqual: " + str(self.one) + " >= " + str(self.two)
+
+
+class LessThanOrEqual(Condition):
+    def eval(self):
+        return self.one.eval() <= self.two.eval()
+
+    def __repr__(self):
+        return "LessThanOrEqual: " + str(self.one) + " <= " + str(self.two)
+
+
+class And(Condition):
+    def eval(self):
+        return self.one.eval() and self.two.eval()
+
+    def __repr__(self):
+        return "And: " + str(self.one) + " && " + str(self.two)
+
+
+class Or(Condition):
+    def eval(self):
+        return self.one.eval() or self.two.eval()
+
+    def __repr__(self):
+        return "Or: " + str(self.one) + " || " + str(self.two)
+
+
+class Not(Condition):
+    def eval(self):
+        return not self.one.eval()
+
+    def __repr__(self):
+        return "Not: " + str(self.one)
+
+
+class In(Condition):
+    def eval(self):
+        return self.one.eval() in self.two.eval()
+
+    def __repr__(self):
+        return "In: " + str(self.one) + " in " + str(self.two)
+
+
+class NotIn(Condition):
+    def eval(self):
+        return self.one.eval() not in self.two.eval()
+
+    def __repr__(self):
+        return "NotIn: " + str(self.one) + " not in " + str(self.two)
+
+
+class Is(Condition):
+    def eval(self):
+        return self.one.eval() is self.two.eval()
+
+    def __repr__(self):
+        return "Is: " + str(self.one) + " is " + str(self.two)
+
+
+class ConditionResolver(Node):
+    def __init__(self, expresion, type, other_expresion, parent=None):
         self.expresion = expresion
         self.type = type
         self.other_expresion = other_expresion
+        Node.__init__(self, parent)
 
     def eval(self):
         if self.type == 'EQ':
-            if self.expresion.eval() == self.other_expresion.eval():
-                return True
+            return Equal(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'NEQ':
-            if self.expresion != self.other_expresion.eval():
-                return True
+            return NotEqual(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'GREATER_THAN':
-            if self.expresion > self.other_expresion.eval():
-                return True
+            return GreaterThan(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'LESS_THAN':
-            if self.expresion < self.other_expresion.eval():
-                return True
+            return LessThan(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'GREATER_THAN_EQ':
-            if self.expresion >= self.other_expresion.eval():
-                return True
+            return GreaterThanOrEqual(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'LESS_THAN_EQ':
-            if self.expresion <= self.other_expresion.eval():
-                return True
+            return LessThanOrEqual(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'AND':
-            if self.expresion and self.other_expresion.eval():
-                return True
+            return And(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'OR':
-            if self.expresion or self.other_expresion.eval():
-                return True
+            return Or(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'NOT':
-            if not self.other_expresion.eval():
-                return True
+            return Not(self.expresion, self.parent).eval()
         elif self.type == 'IN':
-            if self.expresion in self.other_expresion.eval():
-                return True
+            return In(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'NOT_IN':
-            if self.expresion not in self.other_expresion.eval():
-                return True
+            return NotIn(self.expresion, self.other_expresion, self.parent).eval()
         elif self.type == 'IS':
-            if self.expresion is self.other_expresion.eval():
-                return True
+            return Is(self.expresion, self.other_expresion, self.parent).eval()
+
+    def __repr__(self):
+        return "ConditionResolver: " + str(self.expresion) + " " + str(self.type) + " " + str(self.other_expresion)
 
 
-class TypeOf():
-    def __init__(self, expresion):
+class TypeOf(Node):
+    def __init__(self, expresion, parent=None):
         self.expresion = expresion
+        Node.__init__(self, parent)
 
     def eval(self):
         return type(self.expresion.eval()).__name__
 
+    def __repr__(self):
+        return "TypeOf: " + str(self.expresion)
+
 
 class ClassPointer(Pointer):
-    def __init__(self, index):
-        Pointer.__init__(self, index, "classinstances")
+    def __init__(self, index, parent=None):
+        Pointer.__init__(self, index, "classinstances", parent)
 
     def eval(self):
         return global_scope[self.path][self.index]
 
+    def __repr__(self):
+        return "ClassPointer: " + str(self.index) + super().__repr__()
 
-class Class():
-    def __init__(self, name, superclass, methods, interface):
+
+class Class(Node):
+    def __init__(self, name, superclass, methods, interface, parent=None):
         self.name = name
+        Node.__init__(self, parent)
         self.methods = methods.methods  # passed method var is a ClassBody class
         # find the constructor method
         self.constructor = None
@@ -489,10 +821,7 @@ class Class():
                 if (type(method) == AssignFunction and (
                     method.name == "constructor"
                 )):
-                    print("found constructor", method.name)
                     self.constructor = method.scope.get(method.name)
-                else:
-                    print(type(method))
 
         if (superclass is not None):
             self.superclass = superclass
@@ -557,10 +886,13 @@ class Class():
     def get_method_names(self):
         return [method.get_name() for method in self.methods]
 
+    def __repr__(self):
+        return "Class: " + str(self.name) + " " + str(self.superclass) + " " + str(self.interface) + " " + str(self.methods)
+
 
 class AbstractClass(Class):
-    def __init__(self, name, superclass, methods, interface):
-        Class.__init__(self, name, superclass, methods, interface)
+    def __init__(self, name, superclass, methods, interface, parent=None):
+        Class.__init__(self, name, superclass, methods, interface, parent)
 
     def eval(self):
         # Push onto the stack
@@ -569,10 +901,14 @@ class AbstractClass(Class):
     def instanciate(self):
         raise Exception("Abstract classes cannot be instantiated")
 
+    def __repr__(self):
+        return "AbstractClass: " + str(self.name) + " " + str(self.superclass) + " " + str(self.interface) + " " + str(self.methods)
 
-class ClassBody():
-    def __init__(self, methods):
+
+class ClassBody(Node):
+    def __init__(self, methods, parent=None):
         self.methods = methods
+        Node.__init__(self, parent)
 
     def add_method(self, method):
         self.methods.append(method)
@@ -582,3 +918,6 @@ class ClassBody():
 
     def eval(self):
         return Null()
+
+    def __repr__(self):
+        return "ClassBody: " + str(self.methods)

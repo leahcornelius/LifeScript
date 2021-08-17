@@ -41,6 +41,12 @@ class Lexer():
         self.lexer.add('PRIVATE', r'private(?!\w)')
         self.lexer.add('NEW', r'new(?!\w)')
 
+        self.lexer.add('STR', r'str(?!\w)')
+        self.lexer.add('INT', r'int(?!\w)')
+        self.lexer.add('FLOAT', r'float(?!\w)')
+        self.lexer.add('BOOL', r'bool(?!\w)')
+        self.lexer.add('NULL', r'Null(?!\w)')
+
         self.lexer.add('DEBUG_PRINT_STACK', r'dps(?!\w)')
         self.lexer.add('PRINT_SCOPES', r'ps(?!\w)')
 
