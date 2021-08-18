@@ -5,16 +5,6 @@ from copy import deepcopy
 # All AST classes are subclasses of this class.
 
 
-class Return():
-    def __init__(self, expr):
-        self.expr = expr
-
-    def eval(self, env):
-        if hasattr(self.expr, 'eval'):
-            return self.expr.eval(env)
-        return self.expr
-
-
 class Node():
     def __init__(self, parent, children=[]):
         self.parent = parent
@@ -60,6 +50,20 @@ class Node():
 
     def remove_child(self, child):
         self.children.remove(child)
+
+
+class Return(Node):
+    def __init__(self, expr, parent=None):
+        Node.__init__(self, parent)
+        self.expr = expr
+
+    def eval(self):
+        if hasattr(self.expr, 'eval'):
+            return self.expr.eval()
+        return self.expr
+
+    def __repr__(self) -> str:
+        return "Return: " + str(self.expr)
 
 
 class Expression(Node):
@@ -115,6 +119,15 @@ class PrivateVar(Node):
         return "PrivateVar: " + str(self.name) + " " + str(self.value) + " " + str(self.type)
 
 
+class ToString(Node):
+    def __init__(self, expression, parent=None):
+        self.expression = expression
+        Node.__init__(self, parent)
+
+    def eval(self):
+        return String(str(self.expression.eval()))
+
+
 class String(Node):
     def __init__(self, value, parent=None):
         self.value = value
@@ -125,6 +138,14 @@ class String(Node):
 
     def __repr__(self):
         return "String: " + str(self.value)
+
+    def __add__(self, other):
+        if type(other) is String:
+            return String(self.value + other.value)
+        elif type(other) is str:
+            return self.eval() + other
+        else:
+            return String(self.value + str(other.value))
 
 
 class Bool(Node):
@@ -244,8 +265,8 @@ class Print(Node):
         # self.children = []
 
     def eval(self):
-        val = self.value if not callable(
-            getattr(self.value, "eval", None)) else self.value.eval()
+        val = self.value if not hasattr(
+            self.value, "eval") else self.value.eval()
         if (val is not None and type(val) is not Null) or self.print_null:
             print(val)
 
@@ -336,9 +357,6 @@ class Scope():
         self.heap = {}
         self.name = name
 
-        # Create a new dict for this scope
-        global_scope["scopes"].append(self)
-
     def add_child(self, child):
         child.parent = self
         self.children.append(child)
@@ -396,15 +414,15 @@ class Block(Scope):
 
     def eval(self):
         for i, expr in enumerate(self.expressions):
-            res = expr.eval()
-            if isinstance(res, Return):
-                return res.value
+            out = expr.eval()
+            if isinstance(out, Return):
+                return out
 
     def get_scope(self):
         return self.scope
 
     def __repr__(self):
-        return "Block Scope (" + str(self.name) + "): Memory(" + str(self.stack) + " " + str(self.heap) + ") Children Count: " + str(len(self.children)) + " has parent: " + str(self.parent is not None)
+        return "Block Scope (" + str(self.name) + "): Memory(" + str(self.stack) + " " + str(self.heap) + ") Children: " + str(self.children)
 
 
 class Program(Node):
@@ -414,15 +432,27 @@ class Program(Node):
 
     def eval(self):
         for statment in self.statments:
-            if isinstance(statment, Return) or len(self.statments) == 1:
-                return statment.eval()
-            statment.eval()
+            if isinstance(statment, Return):
+                return statment
+
+            out = statment.eval()
+            if isinstance(out, Return):
+                return out
 
     def iter(self):
         yield from self.statments
 
     def __repr__(self):
         return "Program: " + str(self.statments)
+
+
+class Eval(Node):
+    def __init__(self, expression, parent=None):
+        self.expression = expression
+        Node.__init__(self, parent)
+
+    def eval(self):
+        return self.expression.eval()
 
 
 class Parameter(Node):
@@ -473,9 +503,10 @@ class Function(Node):
         body_scope_copy = deepcopy(self.body.get_scope())
 
         self.body.scope = self.scope
-        self.body.eval()
+        out = self.body.eval()
         self.scope = None
         self.body.scope = body_scope_copy
+        return out
 
     def get_name(self):
         return self.name
@@ -548,6 +579,7 @@ class Import(Node):
             imports = math.exports()
             for key, value in imports.items():
                 # form a function
+                # TODO: Store the function in the parent scope under a module scope
                 global_scope[key] = Function(key, value.input, value.code)
 
     def __repr__(self):
@@ -572,8 +604,9 @@ class CallFunction(Node):
             raise Exception("CallFunction: Cannot call " + type(func).__name__)
         if func.body is None:
             raise Exception("CallFunction: No body")
-        else:
-            func.eval(self.args, self.scope)
+        out = func.eval(self.args, self.scope)
+        if isinstance(out, Return):
+            return out.eval()
 
     def __repr__(self):
         return "CallFunction: " + str(self.name) + "(" + str(self.args) + ")"
@@ -585,11 +618,8 @@ class Arg(Node):
         self.value = value
         Node.__init__(self, parent)
 
-    def derive_type(self, parent=None):
-        if parent + "." + self.name in global_scope["ParameterStack"]:
-            return global_scope["ParameterStack"][parent + "." + self.name].type
-        else:
-            return type(self.value).toString()
+    def derive_type(self):
+        return type(self.value).__name__
 
     def __repr__(self):
         return "Arg: " + str(self.name) + " = " + str(self.value)
@@ -615,7 +645,7 @@ class DebugPrintStack(Node):
         Node.__init__(self, parent)
 
     def eval(self):
-        print(global_scope)
+        Print("Deprecated, use std::helper::stack_inspect();")
 
     def __repr__(self):
         return "DebugPrintStack()"
@@ -629,10 +659,15 @@ class StatmentList(Node):
             self.expresion.append(exp)
 
     def eval(self):
-        for exp in self.expresion:
-            exp.eval()
+        for statment in self.expresion:
+            if isinstance(statment, Return):  # Don't evaluate return statements
+                return statment
+            statment.eval()
 
     def add(self, exp):
+        self.expresion.append(exp)
+
+    def addStatement(self, exp):
         self.expresion.append(exp)
 
     def __repr__(self):
@@ -803,6 +838,7 @@ class ClassPointer(Pointer):
         Pointer.__init__(self, index, "classinstances", parent)
 
     def eval(self):
+        # TODO: fix to use the correct scope system
         return global_scope[self.path][self.index]
 
     def __repr__(self):
@@ -829,7 +865,7 @@ class Class(Node):
             self.interface = interface
 
     def eval(self):
-        # Push onto the stack
+        # TODO: Use parent scope
         global_scope["classes"].append(self)
 
     def instanciate(self, args):
@@ -838,6 +874,7 @@ class Class(Node):
             # call the constructor
             instance.constructor.eval(ArgList(args))
         # Push onto the stack
+        # TODO: Use parent scope
         global_scope["classinstances"].append(instance)
         # find our index in the class list
         return ClassPointer(global_scope["classinstances"].index(instance))
@@ -896,6 +933,7 @@ class AbstractClass(Class):
 
     def eval(self):
         # Push onto the stack
+        # TODO: Use parent scope
         global_scope["classes"].append(self)
 
     def instanciate(self):
@@ -921,3 +959,20 @@ class ClassBody(Node):
 
     def __repr__(self):
         return "ClassBody: " + str(self.methods)
+
+
+class AccessInternalMethod(Node):
+    def __init__(self, name, argList, parent=None):
+        self.name = name
+        self.argList = argList
+        Node.__init__(self, parent)
+
+    def eval(self):
+        # Find a class with the name
+        if self.name in globals():
+            class_ = globals()[self.name]
+            # if it is a class
+
+            # resolve the arg list
+            arguments = [arg.value for arg in self.argList.args]
+            return class_(*arguments)

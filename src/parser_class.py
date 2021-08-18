@@ -15,7 +15,7 @@ class Parser():
              'OPEN_BRACKET', 'CLOSE_BRACKET', 'EQUAL', 'EQ', 'NEQ', 'GREATER_THAN_EQ', 'LESS_THAN_EQ', 'GREATER_THAN', 'LESS_THAN', 'OPEN_SQUARE_BRACKET', 'CLOSE_SQUARE_BRACKET', 'COLON',
              'OPEN_CURLY_BRACKET', 'CLOSE_CURLY_BRACKET',
              '$end', 'NEWLINE', 'FUNCTION', 'SEMI_COLON', 'PRINT', 'PERCENT', "DOT", "TYPEOF", "RETURN", "AS", "COMMA", "WHILE", "FOR", "DEBUG_PRINT_STACK", "SINGLE_LINE_COMMENT", "MULTI_LINE_COMMENT", "IMPORT",
-             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW", "PRINT_SCOPES", "NULL", "STR", "FLOAT", "INT"
+             "TYPE", "CLASS", "IMPLEMENTS", "EXTENDS", "ABSTRACT", "PRIVATE", "NEW", "PRINT_SCOPES", "NULL", "STR", "FLOAT", "INT", "INTERNAL_METHOD", "STATIC_METHOD", "EXPORT_METHOD"
              ],
             # A list of precedence rules with ascending precedence, to
             # disambiguate ambiguous production rules.
@@ -74,11 +74,20 @@ class Parser():
         @self.pg.production('statement_list : statement_list statement SEMI_COLON')
         @self.pg.production('statement_list : statement_list statement')
         def statement_list(p):
-            statements = [p[0], p[1]]
-            statemenList = StatmentList(statements)
-            for statement in statements:
-                statemenList.add_child(statement)
-            return statemenList
+            statementList = p[0]
+            statementList.add_child(p[1])
+            statementList.addStatement(p[1])
+            return statementList
+
+        @self.pg.production('need_eval_expression : INTERNAL_METHOD IDENTIFIER COLON OPEN_BRACKET parameters_list CLOSE_BRACKET')
+        def internal_access(p):
+            AccessInternal_ = AccessInternalMethod(p[1].value, p[4])
+            AccessInternal_.add_child(p[4])
+            return AccessInternal_
+
+        @self.pg.production('expression : need_eval_expression')
+        def expression_eval(p):
+            return p[0].eval()
 
         @self.pg.production('expression : IDENTIFIER')
         def statement(p):
@@ -87,7 +96,7 @@ class Parser():
         @self.pg.production('statement : PRINT OPEN_BRACKET expression CLOSE_BRACKET SEMI_COLON')
         def statement(p):
             expr = p[2]
-            print_ = Print(expr)
+            print_ = Print(expr, True)
             print_.add_child(expr)
             return print_
 
@@ -258,10 +267,10 @@ class Parser():
             return AssignFn_
 
         # function call
-        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET CLOSE_BRACKET SEMI_COLON')
-        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')
+        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET CLOSE_BRACKET')
+        @self.pg.production('call_function : IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET')
         def function_call(p):
-            if (len(p) == 4):
+            if (len(p) == 3):
                 return CallFunction(p[0].value,  ArgList([]))
 
             CallFn_ = CallFunction(p[0].value, p[2])
@@ -306,7 +315,9 @@ class Parser():
         # return statments
         @self.pg.production('statement : RETURN expression SEMI_COLON')
         def return_statement(p):
-            return p[1]
+            return_ = Return(p[1])
+            return_.add_child(p[1])
+            return return_
 
         # importing
 
@@ -334,8 +345,8 @@ class Parser():
                     'Invalid private variable declaration, length=' + str(len(p)))
         # class body
 
-        @self.pg.production('class_body : program')
-        @self.pg.production('class_body : class_body program')
+        @self.pg.production('class_body : statement_list')
+        @self.pg.production('class_body : class_body statement_list')
         def class_body(p):
             if len(p) == 1:
                 ClassBody_ = ClassBody([p[0]])
@@ -404,7 +415,9 @@ class Parser():
 
         @self.pg.production('expression : STR OPEN_BRACKET expression CLOSE_BRACKET')
         def string_statement(p):
-            return String(p[2])
+            ToString_ = ToString(p[2])
+            ToString_.add_child(p[2])
+            return ToString_
         # instanciating classes
 
         @self.pg.production('expression : NEW IDENTIFIER OPEN_BRACKET parameters_list CLOSE_BRACKET SEMI_COLON')

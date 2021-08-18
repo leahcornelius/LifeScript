@@ -23,7 +23,7 @@ class Lexer():
         self.lexer.add('VAR', r'var(?!\w)')
         self.lexer.add('PRINT', r"print(?!\w)")
         self.lexer.add('FUNCTION', r'func(?!\w)')
-        self.lexer.add('MODULE', r'mod(?!\w)')
+        self.lexer.add('MODULE', r'module(?!\w)')
         self.lexer.add('IMPORT', r'import(?!\w)')
         self.lexer.add('RETURN', r'return(?!\w)')
         self.lexer.add('IN', r'in(?!\w)')
@@ -46,6 +46,10 @@ class Lexer():
         self.lexer.add('FLOAT', r'float(?!\w)')
         self.lexer.add('BOOL', r'bool(?!\w)')
         self.lexer.add('NULL', r'Null(?!\w)')
+
+        self.lexer.add('INTERNAL_METHOD', r'internal(?!\w)')
+        self.lexer.add('STATIC_METHOD', r'static(?!\w)')
+        self.lexer.add('EXPORT_METHOD', r'export(?!\w)')
 
         self.lexer.add('DEBUG_PRINT_STACK', r'dps(?!\w)')
         self.lexer.add('PRINT_SCOPES', r'ps(?!\w)')
